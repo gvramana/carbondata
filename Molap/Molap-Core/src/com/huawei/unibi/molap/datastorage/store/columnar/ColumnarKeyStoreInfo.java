@@ -47,6 +47,8 @@ public class ColumnarKeyStoreInfo {
 
     private HybridStoreModel hybridStoreModel;
     
+    private HybridStoreModel hybridStoreModel;
+    
     /**
      * dataIndexMap
      */

@@ -1304,6 +1304,7 @@ import org.eigenbase.xom.NodeDef;
          */
         private int dataBlockIndexs;
         
+
         private boolean isColumnar;
 
         /**
@@ -1347,6 +1348,7 @@ import org.eigenbase.xom.NodeDef;
         {
             return isColumnar;
         }
+        
 
         public void setColumnar(boolean isColumnar)
         {
@@ -1493,6 +1495,7 @@ import org.eigenbase.xom.NodeDef;
             copy.actualTableName = this.actualTableName;
             copy.isQueryForDistinctCount = this.isQueryForDistinctCount;
             copy.queryOrder = queryOrder;
+            copy.isColumnar=isColumnar;
             copy.isColumnar=isColumnar;
             return copy;
         }
