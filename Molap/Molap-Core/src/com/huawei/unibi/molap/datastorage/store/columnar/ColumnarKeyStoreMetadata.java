@@ -33,8 +33,8 @@ public class ColumnarKeyStoreMetadata
      */
     private Map<Integer, byte[]> mapOfColumnarKeyBlockData;
     
-
-
+    private boolean isRowStore;
+    
     public ColumnarKeyStoreMetadata(int eachRowSize)
     {
         this.eachRowSize=eachRowSize;
@@ -126,6 +126,16 @@ public class ColumnarKeyStoreMetadata
     public KeyGenerator getKeyGenerator()
     {
         return keyGenerator;
+    }
+
+    public boolean isRowStore()
+    {
+        return isRowStore;
+    }
+
+    public void setRowStore(boolean isRowStore)
+    {
+        this.isRowStore = isRowStore;
     }
 
     /**

@@ -42,13 +42,14 @@ import com.huawei.unibi.molap.engine.util.MolapEngineLogEvent;
 import com.huawei.unibi.molap.engine.util.QueryExecutorUtility;
 import com.huawei.unibi.molap.iterator.MolapIterator;
 import com.huawei.unibi.molap.keygenerator.KeyGenerator;
-import com.huawei.unibi.molap.keygenerator.columnar.impl.MultiDimKeyVarLengthEquiSplitGenerator;
+import com.huawei.unibi.molap.keygenerator.columnar.impl.MultiDimKeyVarLengthVariableSplitGenerator;
 import com.huawei.unibi.molap.metadata.MolapMetadata;
 import com.huawei.unibi.molap.metadata.MolapMetadata.Dimension;
 import com.huawei.unibi.molap.metadata.MolapMetadata.Measure;
 import com.huawei.unibi.molap.metadata.SliceMetaData;
 import com.huawei.unibi.molap.util.MolapProperties;
 import com.huawei.unibi.molap.util.MolapUtil;
+import com.huawei.unibi.molap.vo.HybridStoreModel;
 
 public class QueryExecutorImpl extends AbstractQueryExecutor
 {
@@ -331,6 +332,7 @@ public class QueryExecutorImpl extends AbstractQueryExecutor
                     filterInfo));
         }
         info.setFileBasedQuery(queryModel.isDetailQuery());
+        info.setHybridStoreMeta(slice.getHybridStoreModel());
         info.setExecutionRequired(null!=slice.getDataCache(queryModel.getFactTable()));
         info.setCustomExpressions(queryModel.getExpressions());
         info.setCustomMeasure(queryModel.isAggTable());
@@ -343,8 +345,29 @@ public class QueryExecutorImpl extends AbstractQueryExecutor
         info.setSchemaName(executerProperties.schemaName);
         info.setQueryId(queryModel.getQueryId());
         info.setDetailQuery(queryModel.isDetailQuery());
-        int[] maskedByteRanges = QueryExecutorUtil.getMaskedByte(queryDimensions,
-                slice.getKeyGenerator(queryModel.getFactTable()));
+        //hybrid store related changes
+        int[] maskedByteRanges=null;
+        int[][] maskedByteRangeForSorting = null;
+        if(info.getHybridStoreMeta().isHybridStore())
+        {
+            info.setQueryDimOrdinal(QueryExecutorUtility.getSelectedDimensionStoreIndex(queryDimensions,info.getHybridStoreMeta()));
+            info.setAllSelectedDimensions(QueryExecutorUtility.getAllSelectedDiemnsionStoreIndex(queryDimensions,
+                    queryModel.getDimensionAggInfo(),executerProperties.aggExpDimensions,info.getHybridStoreMeta()));
+            maskedByteRanges = QueryExecutorUtil.getMaskedByte(queryDimensions,
+                    slice.getKeyGenerator(queryModel.getFactTable()),slice.getHybridStoreModel());
+            maskedByteRangeForSorting= QueryExecutorUtility.getMaskedByteRangeForSorting(sortDims,
+                    executerProperties.globalKeyGenerator, executerProperties.maskByteRanges,slice.getHybridStoreModel());
+        }
+        else
+        {
+            info.setQueryDimOrdinal(QueryExecutorUtility.getSelectedDimnesionIndex(queryDimensions));
+            info.setAllSelectedDimensions(QueryExecutorUtility.getAllSelectedDiemnsion(queryDimensions,
+                    queryModel.getDimensionAggInfo(),executerProperties.aggExpDimensions));
+            maskedByteRanges=QueryExecutorUtil.getMaskedByte(queryDimensions,
+                    slice.getKeyGenerator(queryModel.getFactTable()));
+            maskedByteRangeForSorting=QueryExecutorUtility.getMaskedByteRangeForSorting(sortDims,
+                    executerProperties.globalKeyGenerator, executerProperties.maskByteRanges);
+        }
         info.setMaskedKeyByteSize(maskedByteRanges.length);
         int[] maskedBytesLocal = new int[slice.getKeyGenerator(queryModel.getFactTable()).getKeySizeInBytes()];
         QueryExecutorUtil.updateMaskedKeyRanges(maskedBytesLocal, maskedByteRanges);
@@ -363,8 +386,7 @@ public class QueryExecutorImpl extends AbstractQueryExecutor
         info.setDimensionSortOrder(queryModel.getSortOrder());
         info.setUniqueValues(sliceUniqueValues);
         info.setOriginalDims(queryDimensions);
-        int[][] maskedByteRangeForSorting = QueryExecutorUtility.getMaskedByteRangeForSorting(sortDims,
-                executerProperties.globalKeyGenerator, executerProperties.maskByteRanges);
+       
         info.setMaskedByteRangeForSorting(maskedByteRangeForSorting);
         executerProperties.sortDimIndexes = QueryExecutorUtility.fillSortedDimensions(sortDims,queryModel.getDims());
         info.setSortedDimensionsIndex(executerProperties.sortDimIndexes);
@@ -372,8 +394,7 @@ public class QueryExecutorImpl extends AbstractQueryExecutor
                 executerProperties.globalKeyGenerator, maskedByteRangeForSorting, executerProperties.maskByteRanges));
         if(slice.getDimensionCardinality().length > 0)
         {
-            info.setColumnarSplitter(new MultiDimKeyVarLengthEquiSplitGenerator(MolapUtil
-                    .getIncrementedCardinalityFullyFilled(slice.getDimensionCardinality()), (byte)1));
+            info.setColumnarSplitter(new MultiDimKeyVarLengthVariableSplitGenerator(MolapUtil.getDimensionBitLength(slice.getHybridStoreModel().getHybridCardinality(),slice.getHybridStoreModel().getDimensionPartitioner()),slice.getHybridStoreModel().getColumnSplit()));
         }
         info.setLimit(queryModel.getLimit());
         info.setDetailQuery(queryModel.isDetailQuery());
@@ -421,7 +442,7 @@ public class QueryExecutorImpl extends AbstractQueryExecutor
         {
             RestructureUtil.updateDimensionAggInfo(queryModel.getDimensionAggInfo(), sliceMataData.getDimensions());
         }
-        info.setQueryDimOrdinal(QueryExecutorUtility.getSelectedDimnesionIndex(queryDimensions));
+        //info.setQueryDimOrdinal(QueryExecutorUtility.getSelectedDimnesionIndex(queryDimensions));
         info.setComplexQueryDimensions(QueryExecutorUtility.getAllComplexTypesBlockStartIndex(executerProperties.complexDimensionsMap));
         info.setDimensions(executerProperties.dimTables);
         getApplicableDataBlocksForAggDims(queryModel.getDimensionAggInfo(), currentDimTables);
@@ -612,6 +633,7 @@ public class QueryExecutorImpl extends AbstractQueryExecutor
         info.setNewDefaultValues(sliceMetaData.getNewMsrDfts());
         info.setNewDimensionDefaultValue(sliceMetaData.getNewDimsDefVals());
         info.setNewDimensionSurrogates(sliceMetaData.getNewDimsSurrogateKeys());
+        info.setHybridStoreModel(executerProperties.hybridStoreModel);
         return info;
     }
     

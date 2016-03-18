@@ -556,6 +556,7 @@ public final class MolapMetadata
             dimension.setHierName(levHolder.molapHierName);
             dimension.setActualTableName(levHolder.actualTableName);
             dimension.setDimName(levHolder.molapDimName);
+            dimension.setColumnar(levHolder.rolapLevel.columnar);
             dimension.setDataBlockIndex(blockIndex++);
             boolean hasNameColumn = hasNameColumn(lev);
             
@@ -1562,6 +1563,8 @@ public final class MolapMetadata
          * dataBlockIndexs
          */
         private int dataBlockIndexs; 
+        
+        private boolean isColumnar;
 
         /**
          * dataBlockIndexs
@@ -1576,6 +1579,17 @@ public final class MolapMetadata
         public int[] getAllApplicableDataBlockIndexs()
         {
             return allApplicableDataBlockIndexs;
+        }
+        
+
+        public boolean isColumnar()
+        {
+            return isColumnar;
+        }
+
+        public void setColumnar(boolean isColumnar)
+        {
+            this.isColumnar = isColumnar;
         }
 
         public int getDataBlockIndex()
@@ -1748,6 +1762,7 @@ public final class MolapMetadata
             copy.actualTableName=this.actualTableName;
             copy.isQueryForDistinctCount=this.isQueryForDistinctCount;
             copy.queryOrder=queryOrder;
+            copy.isColumnar=isColumnar;
             return copy;
         }
 

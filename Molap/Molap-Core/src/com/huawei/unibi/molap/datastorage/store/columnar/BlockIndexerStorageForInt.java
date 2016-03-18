@@ -23,11 +23,18 @@ public class BlockIndexerStorageForInt implements IndexStorage<int[]>
 
     public BlockIndexerStorageForInt(byte[][] keyBlock)
     {
-        this(keyBlock, false, false, true);
+        this(keyBlock, false, false, false);
     }
     
-    public BlockIndexerStorageForInt(byte[][] keyBlock, boolean compressData, boolean isSortRequired)
+    public BlockIndexerStorageForInt(byte[][] keyBlock, boolean compressData, boolean isSortRequired,boolean isRowBlock)
     {
+        //in case of row block sort is not required
+        if(isRowBlock)
+        {
+            this.keyBlock=keyBlock;
+            this.alreadySorted=true;
+            return;
+        }
         ColumnWithIntIndex[] columnWithIndexs = createColumnWithIndexArray(keyBlock,false);
         if(isSortRequired)
         {
@@ -40,8 +47,15 @@ public class BlockIndexerStorageForInt implements IndexStorage<int[]>
         }
     }
     
-    public BlockIndexerStorageForInt(byte[][] keyBlock, boolean compressData, boolean isHighCardinality, boolean isSortRequired)
+    public BlockIndexerStorageForInt(byte[][] keyBlock, boolean compressData, boolean isHighCardinality, boolean isSortRequired,boolean isRowBlock)
     {
+        //in case of row block sort is not required
+        if(isRowBlock)
+        {
+            this.keyBlock=keyBlock;
+            this.alreadySorted=true;
+            return;
+        }
         ColumnWithIntIndex[] columnWithIndexs = createColumnWithIndexArray(keyBlock,isHighCardinality);
         if(isSortRequired)
         {

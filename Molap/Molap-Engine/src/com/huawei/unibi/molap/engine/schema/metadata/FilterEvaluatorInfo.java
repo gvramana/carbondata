@@ -8,6 +8,7 @@ import com.huawei.unibi.molap.engine.datastorage.InMemoryCube;
 import com.huawei.unibi.molap.engine.executer.impl.QueryFilterInfo;
 import com.huawei.unibi.molap.keygenerator.KeyGenerator;
 import com.huawei.unibi.molap.metadata.MolapMetadata.Dimension;
+import com.huawei.unibi.molap.vo.HybridStoreModel;
 
 public class FilterEvaluatorInfo
 {
@@ -35,6 +36,8 @@ public class FilterEvaluatorInfo
     
     private Map<Integer, GenericQueryType> complexTypesWithBlockStartIndex; 
 
+    private HybridStoreModel hybridStoreModel;
+   
     public Dimension[] getDimensions()
     {
         return dimensions;
@@ -153,5 +156,15 @@ public class FilterEvaluatorInfo
     public void setNewDimensionDefaultValue(String[] newDimensionDefaultValue)
     {
         this.newDimensionDefaultValue = newDimensionDefaultValue;
+    }
+    public void setHybridStoreModel(HybridStoreModel hybridStoreModel)
+    {
+        this.hybridStoreModel=hybridStoreModel;
+        
+    }
+    
+    public HybridStoreModel getHybridStoreModel()
+    {
+        return this.hybridStoreModel;
     }
 }

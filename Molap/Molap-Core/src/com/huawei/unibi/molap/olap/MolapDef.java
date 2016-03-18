@@ -312,6 +312,7 @@ Cube getCube(String cubeName) {
         public String description;  // optional attribute
         public String foreignKey;  // optional attribute
         public Boolean highCardinality;  // attribute default: false
+        public Boolean columnar=true;
 
         /**
          * Contains values of user-defined properties.
@@ -1359,6 +1360,7 @@ public boolean isEnabled() {
                 type = (String)_parser.getAttribute("type", "String", "String", _type_values, false);
                 internalType = (String)_parser.getAttribute("internalType", "String", null, _internalType_values, false);
                 uniqueMembers = (Boolean)_parser.getAttribute("uniqueMembers", "Boolean", "false", null, false);
+                columnar = (Boolean)_parser.getAttribute("columnar", "Boolean", "true", null, false);
                 levelType = (String)_parser.getAttribute("levelType", "String", "Regular", _levelType_values, false);
                 hideMemberIf = (String)_parser.getAttribute("hideMemberIf", "String", "Never", _hideMemberIf_values, false);
                 formatter = (String)_parser.getAttribute("formatter", "String", null, null, false);
@@ -1405,6 +1407,7 @@ public boolean isEnabled() {
         public static final String[] _internalType_values = {"int", "long", "Object", "String"};
         public String internalType;  // optional attribute
         public Boolean uniqueMembers;  // attribute default: false
+        public Boolean columnar=true;
         /** Allowable values for {@link #levelType}. */
         public static final String[] _levelType_values = {"Regular", "TimeYears", "TimeHalfYears", "TimeHalfYear", "TimeQuarters", "TimeMonths", "TimeWeeks", "TimeDays", "TimeHours", "TimeMinutes", "TimeSeconds", "TimeUndefined"};
         public String levelType;  // attribute default: Regular
@@ -1477,6 +1480,7 @@ public boolean isEnabled() {
             displayAttribute(_out, "type", type, _indent+1);
             displayAttribute(_out, "internalType", internalType, _indent+1);
             displayAttribute(_out, "uniqueMembers", uniqueMembers, _indent+1);
+            displayAttribute(_out,"columnar",columnar,_indent+1);
             displayAttribute(_out, "levelType", levelType, _indent+1);
             displayAttribute(_out, "hideMemberIf", hideMemberIf, _indent+1);
             displayAttribute(_out, "formatter", formatter, _indent+1);
@@ -1515,6 +1519,7 @@ public boolean isEnabled() {
                 .add("type", type)
                 .add("internalType", internalType)
                 .add("uniqueMembers", uniqueMembers)
+                .add("columnar",columnar)
                 .add("levelType", levelType)
                 .add("hideMemberIf", hideMemberIf)
                 .add("formatter", formatter)
@@ -1555,6 +1560,7 @@ public boolean isEnabled() {
             _diff = _diff && displayAttributeDiff("type", type, _cother.type, _out, _indent+1);
             _diff = _diff && displayAttributeDiff("internalType", internalType, _cother.internalType, _out, _indent+1);
             _diff = _diff && displayAttributeDiff("uniqueMembers", uniqueMembers, _cother.uniqueMembers, _out, _indent+1);
+            _diff = _diff && displayAttributeDiff("columnar", columnar, _cother.columnar, _out, _indent+1);
             _diff = _diff && displayAttributeDiff("levelType", levelType, _cother.levelType, _out, _indent+1);
             _diff = _diff && displayAttributeDiff("hideMemberIf", hideMemberIf, _cother.hideMemberIf, _out, _indent+1);
             _diff = _diff && displayAttributeDiff("formatter", formatter, _cother.formatter, _out, _indent+1);
