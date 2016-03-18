@@ -114,6 +114,12 @@ public class MDKeyGenStepMeta extends BaseStepMeta implements StepMetaInterface
     
     private int currentRestructNumber;
     
+        /**
+     * this states whether given dimension is columnar or row based store
+     * true: columnar
+     * false: row
+     */
+	private String dimensionsStoreType;
 	private String  highCardinalityDims;
 	
 	 /**
@@ -136,6 +142,7 @@ public class MDKeyGenStepMeta extends BaseStepMeta implements StepMetaInterface
         aggregateLevels = "";
         cubeName = "";
         schemaName = "";
+        dimensionsStoreType = "";       
         highCardinalityDims="";
         currentRestructNumber = -1;
     }
@@ -154,6 +161,7 @@ public class MDKeyGenStepMeta extends BaseStepMeta implements StepMetaInterface
         retval.append("    ").append(XMLHandler.addTagValue("schemaName", schemaName));
         retval.append("    ").append(XMLHandler.addTagValue("highCardinalityDims", highCardinalityDims));
         retval.append("    ").append(XMLHandler.addTagValue("measureCount", measureCount));
+        retval.append("    ").append(XMLHandler.addTagValue("dimensionsStoreType", dimensionsStoreType));
         retval.append("    ").append(XMLHandler.addTagValue("dimensionCount", dimensionCount));
         retval.append("    ").append(XMLHandler.addTagValue("complexDimsCount", complexDimsCount));
         retval.append("    ").append(XMLHandler.addTagValue("complexTypeString", complexTypeString));
@@ -175,6 +183,7 @@ public class MDKeyGenStepMeta extends BaseStepMeta implements StepMetaInterface
             cubeName = XMLHandler.getTagValue(stepnode, "cubeName");
             highCardinalityDims = XMLHandler.getTagValue(stepnode, "highCardinalityDims");
             measureCount = XMLHandler.getTagValue(stepnode, "measureCount");
+            dimensionsStoreType=XMLHandler.getTagValue(stepnode, "dimensionsStoreType");           
             dimensionCount = XMLHandler.getTagValue(stepnode, "dimensionCount");
             complexDimsCount = XMLHandler.getTagValue(stepnode, "complexDimsCount");
             complexTypeString = XMLHandler.getTagValue(stepnode, "complexTypeString");
@@ -205,6 +214,7 @@ public class MDKeyGenStepMeta extends BaseStepMeta implements StepMetaInterface
             rep.saveStepAttribute(idTransformation, idStep, "cubeName", cubeName);
             rep.saveStepAttribute(idTransformation, idStep, "highCardinalityDims", highCardinalityDims);
             rep.saveStepAttribute(idTransformation, idStep, "measureCount", measureCount);
+            rep.saveStepAttribute(idTransformation,idStep,"dimensionsStoreType",dimensionsStoreType);           
             rep.saveStepAttribute(idTransformation, idStep, "dimensionCount", dimensionCount);
             rep.saveStepAttribute(idTransformation, idStep, "complexDimsCount", complexDimsCount);
             rep.saveStepAttribute(idTransformation, idStep, "complexTypeString", complexTypeString);
@@ -232,6 +242,7 @@ public class MDKeyGenStepMeta extends BaseStepMeta implements StepMetaInterface
             cubeName = rep.getStepAttributeString(idStep, "cubeName");
             highCardinalityDims=rep.getStepAttributeString(idStep, "highCardinalityDims");
             measureCount = rep.getStepAttributeString(idStep, "measureCount");
+            dimensionsStoreType=rep.getStepAttributeString(idStep, "dimensionsStoreType");           
             dimensionCount = rep.getStepAttributeString(idStep, "dimensionCount");
             complexDimsCount = rep.getStepAttributeString(idStep, "complexDimsCount");
             complexTypeString = rep.getStepAttributeString(idStep, "complexTypeString");
@@ -445,6 +456,16 @@ public class MDKeyGenStepMeta extends BaseStepMeta implements StepMetaInterface
     {
         this.highCardinalityCount = highCardinalityCount;
     }
+    public void setDimensionsStoreTypeString(String dimensionStoreType)
+	{
+		this.dimensionsStoreType=dimensionStoreType;
+		
+	}
+	
+	public String getDimensionsStoreType()
+	{
+		return this.dimensionsStoreType;
+	}
     
     public void initialize()
     {

@@ -295,7 +295,23 @@ public class GraphConfigurationInfo
      
      private String levelAnddataType;
      
-    /**
+     /**
+      * true represent columnar store
+      * false represent row store
+      */
+     private String dimensionStoreType;
+     
+     public String getDimensionStoreTypeString()
+	 {
+		return dimensionStoreType;
+	 }
+
+	 public void setDimensionStoreTypeString(String dimensionStoreType)
+	 {
+		this.dimensionStoreType = dimensionStoreType;
+	 }
+
+	/**
      * @return the connectionName
      */
     public String getConnectionName()

@@ -729,7 +729,7 @@ public class MolapDataWriterStep extends BaseStep implements StepInterface
                     measureCount, mdkeyLength, mdKeyIndex, aggType,
                     meta.getAggregatorClass(), storeLocation,
                     MolapDataProcessorUtil.getDimLens(meta.getFactDimLensString()),
-                    isByteArrayInMeasure, meta.isUpdateMemberRequest(),dimLens,meta.getFactLevels(),meta.getAggregateLevels(), true, meta.getCurrentRestructNumber(),this.meta.gethighCardCount());
+                    isByteArrayInMeasure, meta.isUpdateMemberRequest(),dimLens,meta.getFactLevels(),meta.getAggregateLevels(), true, meta.getCurrentRestructNumber(),this.meta.gethighCardCount(),null);
         }
         else
         {

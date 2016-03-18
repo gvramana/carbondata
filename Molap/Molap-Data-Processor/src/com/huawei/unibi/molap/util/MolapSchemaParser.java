@@ -1916,6 +1916,42 @@ public final class MolapSchemaParser
         fields= list.toArray(fields);
         return fields;
     }
+
+   /**
+     * This method will give dimensions store type i.e either its columnar or row based
+     * e.g dimname!@#true
+     * it means dimension dimname is columnar store type
+     * @param cube
+     * @param schema
+     * @return
+     */
+    public static String getDimensionsStoreType(Cube cube,Schema schema)
+    {
+    	StringBuffer buffer =new StringBuffer();
+         MolapDef.CubeDimension[] dimensions = cube.dimensions;
+         int dimCounter=0;
+         for(CubeDimension cDimension : dimensions)
+         {
+             //
+             Hierarchy[] hierarchies = null;
+             hierarchies = extractHierarchies(schema, cDimension);
+             for(Hierarchy hierarchy : hierarchies)
+             {
+                 for(Level level : hierarchy.levels)
+                 {
+                	// buffer.append(level.column+"!@#"+level.columnar);
+                	 buffer.append(level.columnar);
+                     //
+                 }
+             }
+             if(dimCounter<dimensions.length-1)
+             {
+            	 buffer.append(",");	 
+             }
+             dimCounter++;
+         }
+        return buffer.toString();
+    }
     
     
     /**

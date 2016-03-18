@@ -1619,6 +1619,7 @@ public class GraphGenerator
                         graphConfiguration.getDimensions()));
         
         molapMdKey.setMeasureCount(graphConfiguration.getMeasureCount() + "");
+        molapMdKey.setDimensionsStoreTypeString(graphConfiguration.getDimensionStoreTypeString());
         molapMdKey.setDimensionCount(graphConfiguration.getActualDims().length + "");
         molapMdKey.setComplexDimsCount(graphConfiguration.getComplexTypeString().isEmpty()?"0":graphConfiguration.getComplexTypeString().
         		split(MolapCommonConstants.SEMICOLON_SPC_CHARACTER).length + "");
@@ -2309,6 +2310,8 @@ public class GraphGenerator
         graphConfiguration.setConnectionName("target");
         graphConfiguration.setHeirAndDimLens(MolapSchemaParser
                 .getHeirAndCardinalityString(dimensions, schema));
+        //setting dimension store types
+        graphConfiguration.setDimensionStoreTypeString(MolapSchemaParser.getDimensionsStoreType(cube, schema));
         graphConfiguration.setPrimaryKeyString(MolapSchemaParser
                 .getPrimaryKeyString(dimensions, schema));
         graphConfiguration.setDenormColumns(MolapSchemaParser
