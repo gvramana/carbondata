@@ -37,6 +37,7 @@ import com.huawei.unibi.molap.engine.filters.measurefilter.GroupMeasureFilterMod
 import com.huawei.unibi.molap.keygenerator.KeyGenerator;
 import com.huawei.unibi.molap.keygenerator.columnar.ColumnarSplitter;
 import com.huawei.unibi.molap.metadata.MolapMetadata.Dimension;
+import com.huawei.unibi.molap.vo.HybridStoreModel;
 
 /**
  * 
@@ -333,6 +334,8 @@ public class SliceExecutionInfo
     private boolean isFileBasedQuery;
 
     private boolean[] highCardinalityTypes;
+    
+    private HybridStoreModel hybridStoreMeta;
     
     private Dimension[] dimensions;
     
@@ -1147,6 +1150,17 @@ public class SliceExecutionInfo
     public void setFileBasedQuery(boolean isFileBasedQuery)
     {
         this.isFileBasedQuery = isFileBasedQuery;
+    }
+   
+    public void setHybridStoreMeta(HybridStoreModel hybridStoreMeta)
+    {
+       this.hybridStoreMeta=hybridStoreMeta;
+        
+    }
+    
+    public HybridStoreModel getHybridStoreMeta()
+    {
+        return this.hybridStoreMeta;
     }
 
     /**
