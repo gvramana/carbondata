@@ -505,7 +505,7 @@ public class MolapFactReaderStep extends BaseStep implements StepInterface
         info.setSchemaName(meta.getSchemaName());
         info.setQueryId(System.currentTimeMillis() + "");
         info.setDetailQuery(false);
-        int[] maskByteRanges = QueryExecutorUtil.getMaskedByte(queryDimensions,globalKeyGenerator);
+        int[] maskByteRanges = QueryExecutorUtil.getMaskedByte(queryDimensions,globalKeyGenerator,null);
         info.setMaskedKeyByteSize(maskByteRanges.length);
         int[] maskedBytesLocal = new int[slice.getKeyGenerator(cube.getFactTableName()).getKeySizeInBytes()];
         QueryExecutorUtil.updateMaskedKeyRanges(maskedBytesLocal, maskByteRanges);
@@ -518,7 +518,7 @@ public class MolapFactReaderStep extends BaseStep implements StepInterface
         
      // get the mask byte range based on dimension present in the query
         maskByteRanges = QueryExecutorUtil.getMaskedByte(currentQueryDims,
-                globalKeyGenerator);
+                globalKeyGenerator,null);
 
         // update the masked byte
         QueryExecutorUtil.updateMaskedKeyRanges(maskedBytes, maskByteRanges);

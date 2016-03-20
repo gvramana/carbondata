@@ -346,9 +346,15 @@ public class QueryExecutorImpl extends AbstractQueryExecutor
         info.setQueryId(queryModel.getQueryId());
         info.setDetailQuery(queryModel.isDetailQuery());
         //hybrid store related changes
-        int[] maskedByteRanges=null;
-        int[][] maskedByteRangeForSorting = null;
-        if(info.getHybridStoreMeta().isHybridStore())
+        info.setQueryDimOrdinal(QueryExecutorUtility.getSelectedDimensionStoreIndex(queryDimensions,info.getHybridStoreMeta()));
+        info.setAllSelectedDimensions(QueryExecutorUtility.getAllSelectedDiemnsionStoreIndex(queryDimensions,
+                queryModel.getDimensionAggInfo(),executerProperties.aggExpDimensions,info.getHybridStoreMeta()));
+        int[] maskedByteRanges=QueryExecutorUtil.getMaskedByte(queryDimensions,
+                slice.getKeyGenerator(queryModel.getFactTable()),executerProperties.hybridStoreModel);
+        int[][] maskedByteRangeForSorting =QueryExecutorUtility.getMaskedByteRangeForSorting(sortDims,
+                executerProperties.globalKeyGenerator, executerProperties.maskByteRanges);
+   
+        /*if(info.getHybridStoreMeta().isHybridStore())
         {
             info.setQueryDimOrdinal(QueryExecutorUtility.getSelectedDimensionStoreIndex(queryDimensions,info.getHybridStoreMeta()));
             info.setAllSelectedDimensions(QueryExecutorUtility.getAllSelectedDiemnsionStoreIndex(queryDimensions,
@@ -367,7 +373,7 @@ public class QueryExecutorImpl extends AbstractQueryExecutor
                     slice.getKeyGenerator(queryModel.getFactTable()));
             maskedByteRangeForSorting=QueryExecutorUtility.getMaskedByteRangeForSorting(sortDims,
                     executerProperties.globalKeyGenerator, executerProperties.maskByteRanges);
-        }
+        }*/
         info.setMaskedKeyByteSize(maskedByteRanges.length);
         int[] maskedBytesLocal = new int[slice.getKeyGenerator(queryModel.getFactTable()).getKeySizeInBytes()];
         QueryExecutorUtil.updateMaskedKeyRanges(maskedBytesLocal, maskedByteRanges);
@@ -446,8 +452,6 @@ public class QueryExecutorImpl extends AbstractQueryExecutor
         info.setComplexQueryDimensions(QueryExecutorUtility.getAllComplexTypesBlockStartIndex(executerProperties.complexDimensionsMap));
         info.setDimensions(executerProperties.dimTables);
         getApplicableDataBlocksForAggDims(queryModel.getDimensionAggInfo(), currentDimTables);
-        info.setAllSelectedDimensions(QueryExecutorUtility.getAllSelectedDiemnsion(queryDimensions,
-                queryModel.getDimensionAggInfo(),executerProperties.aggExpDimensions));
         info.setCurrentSliceIndex(currentSliceIndex);
         info.setMsrMinValue(executerProperties.msrMinValue);
         info.setAggType(executerProperties.aggTypes);
