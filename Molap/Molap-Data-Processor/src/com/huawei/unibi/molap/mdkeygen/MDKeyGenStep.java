@@ -19,11 +19,7 @@
 
 package com.huawei.unibi.molap.mdkeygen;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -326,14 +322,7 @@ public class MDKeyGenStep extends BaseStep
                     "Level cardinality file :: " + e.getMessage());
 			return false;
 		}
-		if(null == dimLens)
-		{
-			LOGGER.info(
-                    MolapDataProcessorLogEvent.UNIBI_MOLAPDATAPROCESSOR_MSG,
-                    "Cardinality could not determined. Nothing to process further in MDKeyGenstep");
-			return false;
-		}
-        String[] dimStoreType = meta.getDimensionsStoreType().split(",");
+		String[] dimStoreType = meta.getDimensionsStoreType().split(",");
 		boolean[] dimensionStoreType = new boolean[dimLens.length];
 		for(int i=0;i<dimLens.length;i++)
 		{
@@ -361,7 +350,8 @@ public class MDKeyGenStep extends BaseStep
       
       //Actual primitive dimension used to generate start & end key 
       
-      data.generator[dimLens.length] = KeyGeneratorFactory.getKeyGenerator(simpleDimsLen);
+      //data.generator[dimLens.length] = KeyGeneratorFactory.getKeyGenerator(simpleDimsLen);
+      data.generator[dimLens.length] = KeyGeneratorFactory.getKeyGenerator(hybridStoreModel.getHybridCardinality(),hybridStoreModel.getDimensionPartitioner());
       
       //To Set MDKey Index of each primitive type in complex type 
       int surrIndex = simpleDimsCount;
