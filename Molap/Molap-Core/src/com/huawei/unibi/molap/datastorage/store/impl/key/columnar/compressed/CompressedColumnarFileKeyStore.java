@@ -95,17 +95,6 @@ public class CompressedColumnarFileKeyStore extends AbstractColumnarKeyStore {
                 columnarKeyStoreDataHolders[i] =
                         new ColumnarKeyStoreDataHolder(columnarKeyBlockData,
                                 columnarKeyStoreMetadata);
-            } else {
-                columnarKeyStoreMetadata = new ColumnarKeyStoreMetadata(
-                        columnarStoreInfo.getSizeOfEachBlock()[blockIndex[i]]);
-                columnarKeyStoreMetadata.setColumnIndex(columnKeyBlockIndex);
-                columnarKeyStoreMetadata.setSorted(columnarStoreInfo.getIsSorted()[blockIndex[i]]);
-                columnarKeyStoreMetadata.setDataIndex(dataIndex);
-                columnarKeyStoreMetadata.setColumnReverseIndex(columnKeyBlockReverseIndexes);
-                columnarKeyStoreMetadata.setUnCompressed(isUnCompressed);
-                columnarKeyStoreDataHolders[i] =
-                        new ColumnarKeyStoreDataHolder(columnarKeyBlockData,
-                                columnarKeyStoreMetadata);
             }
             else
             {
