@@ -1203,7 +1203,6 @@ public final class MolapCommonConstants {
     public static final String STRING = "String";
     public static final String COLUMNAR = "columnar";
     
-    public static final String COLUMNAR = "columnar";
     
     public static final String INTEGER = "Integer";
     public static final String NUMERIC = "Numeric";
