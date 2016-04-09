@@ -52,6 +52,7 @@
         <module>processing</module>
         <module>integration/spark</module>
         <module>format</module>
+        <module>hadoop</module>
         <module>assembly</module>
     </modules>
     <build>
