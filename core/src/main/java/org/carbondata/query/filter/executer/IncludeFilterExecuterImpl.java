@@ -22,6 +22,8 @@ import java.util.BitSet;
 import java.util.List;
 
 import org.carbondata.core.carbon.datastore.chunk.DimensionColumnDataChunk;
+import org.carbondata.core.carbon.datastore.chunk.impl.FixedLengthDimensionDataChunk;
+import org.carbondata.core.carbon.datastore.chunk.impl.VariableLengthDimensionDataChunk;
 import org.carbondata.core.keygenerator.KeyGenerator;
 import org.carbondata.core.util.ByteUtil;
 import org.carbondata.core.util.CarbonUtil;
@@ -67,23 +69,29 @@ public class IncludeFilterExecuterImpl implements FilterExecuter {
 
 	private BitSet getFilteredIndexes(
 			DimensionColumnDataChunk dimensionColumnDataChunk, int numerOfRows) {
-		if (dimensionColumnDataChunk.getAttributes().isNoDictionary()) {
-			return setDirectKeyFilterIndexToBitSet(dimensionColumnDataChunk,
+		if (dimensionColumnDataChunk.getAttributes().isNoDictionary()
+				&& dimensionColumnDataChunk instanceof VariableLengthDimensionDataChunk) {
+			return setDirectKeyFilterIndexToBitSet(
+					(VariableLengthDimensionDataChunk) dimensionColumnDataChunk,
 					numerOfRows);
 		} else if (null != dimensionColumnDataChunk.getAttributes()
-				.getInvertedIndexes()) {
+				.getInvertedIndexes()
+				&& dimensionColumnDataChunk instanceof FixedLengthDimensionDataChunk) {
 			return setFilterdIndexToBitSetWithColumnIndex(
-					dimensionColumnDataChunk, numerOfRows);
+					(FixedLengthDimensionDataChunk) dimensionColumnDataChunk,
+					numerOfRows);
 		}
 
 		return setFilterdIndexToBitSet(dimensionColumnDataChunk, numerOfRows);
 	}
 
 	private BitSet setDirectKeyFilterIndexToBitSet(
-			DimensionColumnDataChunk dimensionColumnDataChunk, int numerOfRows) {
+			VariableLengthDimensionDataChunk dimensionColumnDataChunk, int numerOfRows) {
 		BitSet bitSet = new BitSet(numerOfRows);
-		List<byte[]> listOfColumnarKeyBlockDataForNoDictionaryVals = dimensionColumnDataChunk
-				.getAllNonDictionaryChunk();
+		if(dimensionColumnDataChunk instanceof VariableLengthDimensionDataChunk)
+		{
+		List<byte[]> listOfColumnarKeyBlockDataForNoDictionaryVals =((VariableLengthDimensionDataChunk) dimensionColumnDataChunk)
+				.getCompleteDataChunk();
 		byte[][] filterValues = dimColumnExecuterInfo.getFilterKeys();
 		int[] columnIndexArray = dimensionColumnDataChunk.getAttributes()
 				.getInvertedIndexes();
@@ -113,6 +121,7 @@ public class IncludeFilterExecuterImpl implements FilterExecuter {
 						}
 					}
 				}
+			}
 
 			}
 		}
@@ -121,38 +130,42 @@ public class IncludeFilterExecuterImpl implements FilterExecuter {
 	}
 
 	private BitSet setFilterdIndexToBitSetWithColumnIndex(
-			DimensionColumnDataChunk dimensionColumnDataChunk, int numerOfRows) {
-		int[] columnIndex = dimensionColumnDataChunk.getAttributes()
-				.getInvertedIndexes();
-		int start = 0;
-		int last = 0;
-		int startIndex = 0;
+			FixedLengthDimensionDataChunk dimensionColumnDataChunk,
+			int numerOfRows) {
 		BitSet bitSet = new BitSet(numerOfRows);
-		byte[][] filterValues = dimColumnExecuterInfo.getFilterKeys();
-		for (int i = 0; i < filterValues.length; i++) {
-			start = CarbonUtil.getFirstIndexUsingBinarySearch(
-					dimensionColumnDataChunk, startIndex, numerOfRows - 1,
-					filterValues[i]);
-			if (start == -1) {
-				continue;
-			}
-			bitSet.set(columnIndex[start]);
-			last = start;
-			for (int j = start + 1; j < numerOfRows; j++) {
-				if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(
-						dimensionColumnDataChunk.getAllDictionaryData(), j
-								* filterValues[i].length,
-						filterValues[i].length, filterValues[i], 0,
-						filterValues[i].length) == 0) {
-					bitSet.set(columnIndex[j]);
-					last++;
-				} else {
+		if (dimensionColumnDataChunk instanceof FixedLengthDimensionDataChunk) {
+			FixedLengthDimensionDataChunk fixedColumnDataChunk = (FixedLengthDimensionDataChunk) dimensionColumnDataChunk;
+			int[] columnIndex = dimensionColumnDataChunk.getAttributes()
+					.getInvertedIndexes();
+			int start = 0;
+			int last = 0;
+			int startIndex = 0;
+			byte[][] filterValues = dimColumnExecuterInfo.getFilterKeys();
+			for (int i = 0; i < filterValues.length; i++) {
+				start = CarbonUtil.getFirstIndexUsingBinarySearch(
+						dimensionColumnDataChunk, startIndex, numerOfRows - 1,
+						filterValues[i]);
+				if (start == -1) {
+					continue;
+				}
+				bitSet.set(columnIndex[start]);
+				last = start;
+				for (int j = start + 1; j < numerOfRows; j++) {
+					if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(
+							fixedColumnDataChunk.getCompleteDataChunk(), j
+									* filterValues[i].length,
+							filterValues[i].length, filterValues[i], 0,
+							filterValues[i].length) == 0) {
+						bitSet.set(columnIndex[j]);
+						last++;
+					} else {
+						break;
+					}
+				}
+				startIndex = last;
+				if (startIndex >= numerOfRows) {
 					break;
 				}
-			}
-			startIndex = last;
-			if (startIndex >= numerOfRows) {
-				break;
 			}
 		}
 		return bitSet;
@@ -160,35 +173,42 @@ public class IncludeFilterExecuterImpl implements FilterExecuter {
 
 	private BitSet setFilterdIndexToBitSet(
 			DimensionColumnDataChunk dimensionColumnDataChunk, int numerOfRows) {
-		int start = 0;
-		int last = 0;
 		BitSet bitSet = new BitSet(numerOfRows);
-		int startIndex = 0;
-		byte[][] filterValues = dimColumnExecuterInfo.getFilterKeys();
-		for (int k = 0; k < filterValues.length; k++) {
-			start = CarbonUtil.getFirstIndexUsingBinarySearch(
-					dimensionColumnDataChunk, startIndex, numerOfRows - 1,
-					filterValues[k]);
-			if (start == -1) {
-				continue;
-			}
-			bitSet.set(start);
-			last = start;
-			for (int j = start + 1; j < numerOfRows; j++) {
-				if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(
-						dimensionColumnDataChunk.getAllDictionaryData(), j
-								* filterValues[k].length,
-						filterValues[k].length, filterValues[k], 0,
-						filterValues[k].length) == 0) {
-					bitSet.set(j);
-					last++;
-				} else {
-					break;
+		if (dimensionColumnDataChunk instanceof FixedLengthDimensionDataChunk) {
+			if (dimensionColumnDataChunk instanceof FixedLengthDimensionDataChunk) {
+				FixedLengthDimensionDataChunk fixedDimensionChunk = (FixedLengthDimensionDataChunk) dimensionColumnDataChunk;
+				int start = 0;
+				int last = 0;
+				int startIndex = 0;
+				byte[][] filterValues = dimColumnExecuterInfo.getFilterKeys();
+				for (int k = 0; k < filterValues.length; k++) {
+					start = CarbonUtil
+							.getFirstIndexUsingBinarySearch(
+									(FixedLengthDimensionDataChunk) dimensionColumnDataChunk,
+									startIndex, numerOfRows - 1,
+									filterValues[k]);
+					if (start == -1) {
+						continue;
+					}
+					bitSet.set(start);
+					last = start;
+					for (int j = start + 1; j < numerOfRows; j++) {
+						if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(
+								fixedDimensionChunk.getCompleteDataChunk(), j
+										* filterValues[k].length,
+								filterValues[k].length, filterValues[k], 0,
+								filterValues[k].length) == 0) {
+							bitSet.set(j);
+							last++;
+						} else {
+							break;
+						}
+					}
+					startIndex = last;
+					if (startIndex >= numerOfRows) {
+						break;
+					}
 				}
-			}
-			startIndex = last;
-			if (startIndex >= numerOfRows) {
-				break;
 			}
 		}
 		return bitSet;

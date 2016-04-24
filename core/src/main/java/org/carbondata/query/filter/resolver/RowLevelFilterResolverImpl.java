@@ -30,6 +30,7 @@ import org.carbondata.query.expression.Expression;
 import org.carbondata.query.expression.conditional.ConditionalExpression;
 import org.carbondata.query.filter.executer.FilterExecuter;
 import org.carbondata.query.filter.executer.RowLevelFilterExecuterImpl;
+import org.carbondata.query.util.QueryExecutorUtility;
 
 public class RowLevelFilterResolverImpl extends ConditionalFilterResolverImpl {
 	
@@ -61,19 +62,20 @@ public class RowLevelFilterResolverImpl extends ConditionalFilterResolverImpl {
                         dimColumnEvaluatorInfo.setDimensionExistsInCurrentSilce(false);
                     dimColEvaluatorInfoList.add(dimColumnEvaluatorInfo);
 				} else {
-					msrColumnEvalutorInfo = new MsrColumnEvalutorInfo();
-					msrColumnEvalutorInfo.setRowIndex(index++);
-					msrColumnEvalutorInfo
-							.setAggregator(((Measure) columnExpression.getDim())
-									.getAggName());
-					// if measure is found then index returned will be > 0 .
-					// else it will be -1 . here if the measure is a newly added
-					// measure then index will be >0.
-
-					msrColumnEvalutorInfo.setMeasureExistsInCurrentSlice(false);
-					msrColumnEvalutorInfo.setDataType(columnExpression.getDataType());
-					msrColEvalutorInfoList.add(msrColumnEvalutorInfo);
-				}
+			          msrColumnEvalutorInfo = new MsrColumnEvalutorInfo();
+			          msrColumnEvalutorInfo.setRowIndex(index++);
+			          msrColumnEvalutorInfo.setAggregator(((Measure) columnExpression.getDim()).getAggName());
+			         // int measureIndex = QueryExecutorUtility
+			             // .isNewMeasure(info.getNewMeasures(), ((Measure) columnExpression.getDim()));
+			          // if measure is found then index returned will be > 0 .
+			          // else it will be -1 . here if the measure is a newly added
+			          // measure then index will be >0.
+			      
+			            msrColumnEvalutorInfo
+			                .setColumnIndex(((Measure) columnExpression.getDim()).getOrdinal());
+			            msrColumnEvalutorInfo.setType(columnExpression.getDimension().getDataType());
+			          msrColEvalutorInfoList.add(msrColumnEvalutorInfo);
+			        }
             }
         }
     }

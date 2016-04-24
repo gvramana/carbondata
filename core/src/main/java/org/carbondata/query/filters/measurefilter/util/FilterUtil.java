@@ -759,11 +759,7 @@ public final class FilterUtil {
 			KeyGenerator keyGenerator) {
 		IndexKey indexKey = null;
 		try {
-			indexKey = new IndexKey();
-			
-			indexKey.setDictionaryKeys(keyGenerator
-					.generateKey(startKey));
-
+			indexKey = new IndexKey(keyGenerator.generateKey(startKey), null);
 		} catch (KeyGenException e) {
 			LOGGER.error(CarbonEngineLogEvent.UNIBI_CARBONENGINE_MSG,
 					e.getMessage());

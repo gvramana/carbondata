@@ -22,6 +22,8 @@ import java.util.BitSet;
 import java.util.List;
 
 import org.carbondata.core.carbon.datastore.chunk.DimensionColumnDataChunk;
+import org.carbondata.core.carbon.datastore.chunk.impl.FixedLengthDimensionDataChunk;
+import org.carbondata.core.carbon.datastore.chunk.impl.VariableLengthDimensionDataChunk;
 import org.carbondata.core.keygenerator.KeyGenerator;
 import org.carbondata.core.util.ByteUtil;
 import org.carbondata.core.util.CarbonUtil;
@@ -71,21 +73,21 @@ public class ExcludeFilterExecuterImpl implements FilterExecuter {
 	private BitSet getFilteredIndexes(DimensionColumnDataChunk dimColumnDataChunk,
 			int numerOfRows) {
 		// For high cardinality dimensions.
-		if (dimColumnDataChunk.getAttributes().isNoDictionary()) {
-			return setDirectKeyFilterIndexToBitSet(dimColumnDataChunk, numerOfRows);
+		if (dimColumnDataChunk.getAttributes().isNoDictionary() && dimColumnDataChunk instanceof VariableLengthDimensionDataChunk) {
+			return setDirectKeyFilterIndexToBitSet((VariableLengthDimensionDataChunk)dimColumnDataChunk, numerOfRows);
 		}
-		if (null != dimColumnDataChunk.getAttributes().getInvertedIndexes()) {
-			return setFilterdIndexToBitSetWithColumnIndex(dimColumnDataChunk,
+		if (null != dimColumnDataChunk.getAttributes().getInvertedIndexes() && dimColumnDataChunk instanceof FixedLengthDimensionDataChunk) {
+			return setFilterdIndexToBitSetWithColumnIndex((FixedLengthDimensionDataChunk)dimColumnDataChunk,
 					numerOfRows);
 		}
-		return setFilterdIndexToBitSet(dimColumnDataChunk, numerOfRows);
+		return setFilterdIndexToBitSet((FixedLengthDimensionDataChunk)dimColumnDataChunk, numerOfRows);
 	}
 
 	private BitSet setDirectKeyFilterIndexToBitSet(
-			DimensionColumnDataChunk dimColumnDataChunk, int numerOfRows) {
+			VariableLengthDimensionDataChunk dimColumnDataChunk, int numerOfRows) {
 		BitSet bitSet = new BitSet(numerOfRows);
 		bitSet.flip(0, numerOfRows);
-		List<byte[]> listOfColumnarKeyBlockDataForNoDictionaryVal = dimColumnDataChunk.getAllNonDictionaryChunk();
+		List<byte[]> listOfColumnarKeyBlockDataForNoDictionaryVal = dimColumnDataChunk.getCompleteDataChunk();
 		byte[][] filterValues =dimColumnExecuterInfo.getFilterKeys();
 		int[] columnIndexArray = dimColumnDataChunk.getAttributes().getInvertedIndexes();
 		int[] columnReverseIndexArray = dimColumnDataChunk.getAttributes().getInvertedIndexesReverse();
@@ -121,7 +123,7 @@ public class ExcludeFilterExecuterImpl implements FilterExecuter {
 	}
 
 	private BitSet setFilterdIndexToBitSetWithColumnIndex(
-			DimensionColumnDataChunk dimColumnDataChunk, int numerOfRows) {
+			FixedLengthDimensionDataChunk dimColumnDataChunk, int numerOfRows) {
 		int[] columnIndex =dimColumnDataChunk.getAttributes().getInvertedIndexes();
 		int startKey = 0;
 		int last = 0;
@@ -139,7 +141,7 @@ public class ExcludeFilterExecuterImpl implements FilterExecuter {
 			last = startKey;
 			for (int j = startKey + 1; j < numerOfRows; j++) {
 				if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(
-						dimColumnDataChunk.getAllDictionaryData(), j
+						dimColumnDataChunk.getCompleteDataChunk(), j
 								* filterValues[i].length,
 						filterValues[i].length, filterValues[i], 0,
 						filterValues[i].length) == 0) {
@@ -158,10 +160,13 @@ public class ExcludeFilterExecuterImpl implements FilterExecuter {
 	}
 
 	private BitSet setFilterdIndexToBitSet(
-			DimensionColumnDataChunk dimColumnDataChunk, int numerOfRows) {
+			FixedLengthDimensionDataChunk dimColumnDataChunk, int numerOfRows) {
+		BitSet bitSet = new BitSet(numerOfRows);
+		if(dimColumnDataChunk instanceof FixedLengthDimensionDataChunk)
+		{
+	    FixedLengthDimensionDataChunk fixedChunk=(FixedLengthDimensionDataChunk)dimColumnDataChunk;
 		int startKey = 0;
 		int last = 0;
-		BitSet bitSet = new BitSet(numerOfRows);
 		bitSet.flip(0, numerOfRows);
 		int startIndex = 0;
 		byte[][] filterValues =dimColumnExecuterInfo.getFilterKeys();
@@ -175,7 +180,7 @@ public class ExcludeFilterExecuterImpl implements FilterExecuter {
 			last = startKey;
 			for (int j = startKey + 1; j < numerOfRows; j++) {
 				if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(
-						dimColumnDataChunk.getAllDictionaryData(), j
+						fixedChunk.getCompleteDataChunk(), j
 								* filterValues[k].length,
 						filterValues[k].length, filterValues[k], 0,
 						filterValues[k].length) == 0) {
@@ -189,6 +194,7 @@ public class ExcludeFilterExecuterImpl implements FilterExecuter {
 			if (startIndex >= numerOfRows) {
 				break;
 			}
+		}
 		}
 		return bitSet;
 	}

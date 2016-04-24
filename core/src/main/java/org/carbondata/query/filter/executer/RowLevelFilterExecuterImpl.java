@@ -140,7 +140,7 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 							.getDimensionDataChunk()[dimColumnEvaluatorInfo
 							.getColumnIndex()];
 					if (null != dimensionColumnDataChunk
-							.getAllNonDictionaryChunk()) {
+							.getCompleteDataChunk()) {
 						memberString = readMemberBasedOnNoDictionaryVal(
 								dimColumnEvaluatorInfo,
 								dimensionColumnDataChunk, index);
@@ -207,16 +207,16 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 		SqlStatement.Type msrType;
 
 		for (MsrColumnEvalutorInfo msrColumnEvalutorInfo : msrColEvalutorInfoList) {
-			switch (msrColumnEvalutorInfo.getDataType()) {
-			case LongType:
-				msrType = SqlStatement.Type.LONG;
-				break;
-			case DecimalType:
-				msrType = SqlStatement.Type.DECIMAL;
-				break;
-			default:
-				msrType = SqlStatement.Type.DOUBLE;
-			}
+		      switch (msrColumnEvalutorInfo.getType()) {
+		        case LONG:
+		          msrType = SqlStatement.Type.LONG;
+		          break;
+		        case DECIMAL:
+		          msrType = SqlStatement.Type.DECIMAL;
+		          break;
+		        default:
+		          msrType = SqlStatement.Type.DOUBLE;
+		      }
 			// if measure doesnt exist then set the default value.
 			if (!msrColumnEvalutorInfo.isMeasureExistsInCurrentSlice()) {
 				record[msrColumnEvalutorInfo.getRowIndex()] = msrColumnEvalutorInfo
@@ -285,12 +285,12 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 				.getInvertedIndexesReverse()) {
 			// Getting the data for direct surrogates.
 			noDictionaryVals = dimensionColumnDataChunk
-					.getAllNonDictionaryChunk().get(
+					.getCompleteDataChunk().get(
 							dimensionColumnDataChunk.getAttributes()
 									.getInvertedIndexesReverse()[index]);
 		} else {
 			noDictionaryVals = dimensionColumnDataChunk
-					.getAllNonDictionaryChunk().get(index);
+					.getCompleteDataChunk().get(index);
 		}
 		return new String(noDictionaryVals);
 	}

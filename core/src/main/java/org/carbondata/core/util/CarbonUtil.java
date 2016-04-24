@@ -54,7 +54,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.carbondata.common.logging.LogService;
 import org.carbondata.common.logging.LogServiceFactory;
-import org.carbondata.core.carbon.datastore.chunk.DimensionColumnDataChunk;
+import org.carbondata.core.carbon.datastore.chunk.impl.FixedLengthDimensionDataChunk;
 import org.carbondata.core.carbon.metadata.datatype.DataType;
 import org.carbondata.core.carbon.metadata.encoder.Encoding;
 import org.carbondata.core.carbon.metadata.leafnode.DataFileMetadata;
@@ -1230,13 +1230,13 @@ public final class CarbonUtil {
     return -1;
   }
 
-  public static int getFirstIndexUsingBinarySearch(DimensionColumnDataChunk dimColumnDataChunk,
+  public static int getFirstIndexUsingBinarySearch(FixedLengthDimensionDataChunk dimColumnDataChunk,
       int low, int high, byte[] compareValue) {
     int cmpResult = 0;
     while (high >= low) {
       int mid = (low + high) / 2;
       cmpResult = ByteUtil.UnsafeComparer.INSTANCE
-          .compareTo(dimColumnDataChunk.getAllDictionaryData(), mid * compareValue.length,
+          .compareTo(dimColumnDataChunk.getCompleteDataChunk(), mid * compareValue.length,
               compareValue.length, compareValue, 0, compareValue.length);
       if (cmpResult < 0) {
         low = mid + 1;
@@ -1245,7 +1245,7 @@ public final class CarbonUtil {
       } else {
         int currentIndex = mid;
         while (currentIndex - 1 >= 0 && ByteUtil.UnsafeComparer.INSTANCE
-            .compareTo(dimColumnDataChunk.getAllDictionaryData(), (currentIndex - 1) * compareValue.length,
+            .compareTo(dimColumnDataChunk.getCompleteDataChunk(), (currentIndex - 1) * compareValue.length,
                 compareValue.length, compareValue, 0, compareValue.length) == 0) {
           --currentIndex;
         }
