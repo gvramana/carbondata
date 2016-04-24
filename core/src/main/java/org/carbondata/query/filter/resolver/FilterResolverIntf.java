@@ -18,8 +18,13 @@
  */
 package org.carbondata.query.filter.resolver;
 
+import org.carbondata.core.carbon.AbsoluteTableIdentifier;
+import org.carbondata.core.carbon.datastore.IndexKey;
+import org.carbondata.core.carbon.datastore.block.AbstractIndex;
+import org.carbondata.core.keygenerator.KeyGenerator;
+import org.carbondata.query.carbonfilterinterface.FilterExecuterType;
+import org.carbondata.query.evaluators.DimColumnResolvedFilterInfo;
 import org.carbondata.query.filter.executer.FilterExecuter;
-import org.carbondata.query.schema.metadata.FilterEvaluatorInfo;
 
 public interface FilterResolverIntf {
 
@@ -30,17 +35,18 @@ public interface FilterResolverIntf {
 	 * 
 	 * @param info
 	 */
-	void resolve(FilterEvaluatorInfo info);
+	void resolve(AbsoluteTableIdentifier absoluteTableIdentifier);
 
 	/**
 	 * This API will provide the left column filter expression
-	 * 
+	 * inorder to resolve the left expression filter.
 	 * @return FilterResolverIntf
 	 */
 	FilterResolverIntf getLeft();
 
 	/**
-	 * API will provide the right column filter expression
+	 * API will provide the right column filter expression inorder to resolve
+	 * the right expression filter.
 	 * 
 	 * @return FilterResolverIntf
 	 */
@@ -49,9 +55,40 @@ public interface FilterResolverIntf {
 	/**
 	 * This API will get the filter executer instance which is required to
 	 * evaluate/execute the resolved filter expressions in the executer layer.
+	 * This executer instance will be identified based on the resolver instance
 	 * 
 	 * @return FilterExecuter instance.
 	 */
 	FilterExecuter getFilterExecuterInstance();
+
+	/**
+	 * API will return the resolved filter instance, this instance will provide
+	 * the resolved surrogates based on the applied filter
+	 * 
+	 * @return DimColumnResolvedFilterInfo object
+	 */
+	DimColumnResolvedFilterInfo getDimColResolvedFilterInfo();
+
+	/**
+	 * API will get the start key based on the filter applied
+	 * based on the key generator
+	 * @return long[], array of start keys.
+	 */
+	IndexKey getstartKey(KeyGenerator keyGenerator);
+
+	/**
+	 * API will read the end key based on the max surrogate of
+	 * particular dimension column
+	 * 
+	 * @return
+	 */
+	IndexKey getEndKey(AbstractIndex segmentIndexBuilder,
+			AbsoluteTableIdentifier tableIdentifier);
+	
+	/**
+	 * 
+	 * @return
+	 */
+	  FilterExecuterType getFilterExecuterType();
 
 }

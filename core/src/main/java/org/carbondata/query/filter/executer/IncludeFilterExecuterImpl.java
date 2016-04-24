@@ -21,64 +21,74 @@ package org.carbondata.query.filter.executer;
 import java.util.BitSet;
 import java.util.List;
 
-import org.carbondata.core.datastorage.store.columnar.ColumnarKeyStoreDataHolder;
+import org.carbondata.core.carbon.datastore.chunk.DimensionColumnDataChunk;
+import org.carbondata.core.keygenerator.KeyGenerator;
 import org.carbondata.core.util.ByteUtil;
 import org.carbondata.core.util.CarbonUtil;
-import org.carbondata.query.evaluators.BlockDataHolder;
-import org.carbondata.query.evaluators.DimColumnEvaluatorInfo;
-import org.carbondata.query.evaluators.FilterProcessorPlaceHolder;
+import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
+import org.carbondata.query.evaluators.DimColumnExecuterFilterInfo;
+import org.carbondata.query.evaluators.DimColumnResolvedFilterInfo;
+import org.carbondata.query.filters.measurefilter.util.FilterUtil;
 
 public class IncludeFilterExecuterImpl implements FilterExecuter {
 
-	List<DimColumnEvaluatorInfo> dimColEvaluatorInfoList;
+	DimColumnResolvedFilterInfo dimColumnEvaluatorInfo;
+	DimColumnExecuterFilterInfo dimColumnExecuterInfo;
 
-	public IncludeFilterExecuterImpl(List<DimColumnEvaluatorInfo> dimColEvaluatorInfoList)
-	{
-		this.dimColEvaluatorInfoList=dimColEvaluatorInfoList;
+	public IncludeFilterExecuterImpl(
+			DimColumnResolvedFilterInfo dimColumnEvaluatorInfo) {
+		this.dimColumnEvaluatorInfo = dimColumnEvaluatorInfo;
 	}
+
+	public IncludeFilterExecuterImpl(
+			DimColumnResolvedFilterInfo dimColumnEvaluatorInfo,
+			KeyGenerator blockKeyGenerator) {
+		this(dimColumnEvaluatorInfo);
+		FilterUtil.prepareKeysFromSurrogates(
+				dimColumnEvaluatorInfo.getFilterValues(), blockKeyGenerator,
+				dimColumnEvaluatorInfo.getDimension(), dimColumnExecuterInfo);
+
+	}
+
 	@Override
-	public BitSet applyFilter(BlockDataHolder blockDataHolder,
-			FilterProcessorPlaceHolder placeHolder,int[] noDictionaryColIndexes) {
-		if (null == blockDataHolder.getColumnarKeyStore()[dimColEvaluatorInfoList
-				.get(0).getColumnIndex()]) {
-			blockDataHolder.getColumnarKeyStore()[dimColEvaluatorInfoList
-					.get(0).getColumnIndex()] = blockDataHolder
-					.getLeafDataBlock().getColumnarKeyStore(
-							blockDataHolder.getFileHolder(),
-							dimColEvaluatorInfoList.get(0).getColumnIndex(),
-							false,noDictionaryColIndexes);
+	public BitSet applyFilter(BlocksChunkHolder blockChunkHolder) {
+		if (null == blockChunkHolder.getDimensionDataChunk()[dimColumnEvaluatorInfo
+				.getColumnIndex()]) {
+			blockChunkHolder.getDimensionDataChunk()[dimColumnEvaluatorInfo
+					.getColumnIndex()] = blockChunkHolder.getDataBlock()
+					.getDimensionChunk(blockChunkHolder.getFileReader(),
+							dimColumnEvaluatorInfo.getColumnIndex());
 		}
 		return getFilteredIndexes(
-				blockDataHolder.getColumnarKeyStore()[dimColEvaluatorInfoList
-						.get(0).getColumnIndex()], blockDataHolder
-						.getLeafDataBlock().getnKeys());
+				blockChunkHolder.getDimensionDataChunk()[dimColumnEvaluatorInfo
+						.getColumnIndex()],
+				blockChunkHolder.getDataBlock().nodeSize());
 	}
 
-	private BitSet getFilteredIndexes(ColumnarKeyStoreDataHolder keyBlockArray,
-			int numerOfRows) {
-		if (keyBlockArray.getColumnarKeyStoreMetadata()
-				.isNoDictionaryValColumn()) {
-			return setDirectKeyFilterIndexToBitSet(keyBlockArray, numerOfRows);
-		} else if (null != keyBlockArray.getColumnarKeyStoreMetadata()
-				.getColumnIndex()) {
-			return setFilterdIndexToBitSetWithColumnIndex(keyBlockArray,
+	private BitSet getFilteredIndexes(
+			DimensionColumnDataChunk dimensionColumnDataChunk, int numerOfRows) {
+		if (dimensionColumnDataChunk.getAttributes().isNoDictionary()) {
+			return setDirectKeyFilterIndexToBitSet(dimensionColumnDataChunk,
 					numerOfRows);
+		} else if (null != dimensionColumnDataChunk.getAttributes()
+				.getInvertedIndexes()) {
+			return setFilterdIndexToBitSetWithColumnIndex(
+					dimensionColumnDataChunk, numerOfRows);
 		}
 
-		return setFilterdIndexToBitSet(keyBlockArray, numerOfRows);
+		return setFilterdIndexToBitSet(dimensionColumnDataChunk, numerOfRows);
 	}
 
 	private BitSet setDirectKeyFilterIndexToBitSet(
-			ColumnarKeyStoreDataHolder keyBlockArray, int numerOfRows) {
+			DimensionColumnDataChunk dimensionColumnDataChunk, int numerOfRows) {
 		BitSet bitSet = new BitSet(numerOfRows);
-		List<byte[]> listOfColumnarKeyBlockDataForNoDictionaryVals = keyBlockArray
-				.getNoDictionaryValBasedKeyBlockData();
-		byte[][] filterValues = dimColEvaluatorInfoList.get(0)
-				.getFilterValues();
-		int[] columnIndexArray = keyBlockArray.getColumnarKeyStoreMetadata()
-				.getColumnIndex();
-		int[] columnReverseIndexArray = keyBlockArray
-				.getColumnarKeyStoreMetadata().getColumnReverseIndex();
+		List<byte[]> listOfColumnarKeyBlockDataForNoDictionaryVals = dimensionColumnDataChunk
+				.getAllNonDictionaryChunk();
+		byte[][] filterValues = dimColumnExecuterInfo.getFilterKeys();
+		int[] columnIndexArray = dimensionColumnDataChunk.getAttributes()
+				.getInvertedIndexes();
+		int[] columnReverseIndexArray = dimensionColumnDataChunk
+				.getAttributes().getInvertedIndexesReverse();
 		for (int i = 0; i < filterValues.length; i++) {
 			byte[] filterVal = filterValues[i];
 			if (null != listOfColumnarKeyBlockDataForNoDictionaryVals) {
@@ -111,18 +121,18 @@ public class IncludeFilterExecuterImpl implements FilterExecuter {
 	}
 
 	private BitSet setFilterdIndexToBitSetWithColumnIndex(
-			ColumnarKeyStoreDataHolder keyBlockArray, int numerOfRows) {
-		int[] columnIndex = keyBlockArray.getColumnarKeyStoreMetadata()
-				.getColumnIndex();
+			DimensionColumnDataChunk dimensionColumnDataChunk, int numerOfRows) {
+		int[] columnIndex = dimensionColumnDataChunk.getAttributes()
+				.getInvertedIndexes();
 		int start = 0;
 		int last = 0;
 		int startIndex = 0;
 		BitSet bitSet = new BitSet(numerOfRows);
-		byte[][] filterValues = dimColEvaluatorInfoList.get(0)
-				.getFilterValues();
+		byte[][] filterValues = dimColumnExecuterInfo.getFilterKeys();
 		for (int i = 0; i < filterValues.length; i++) {
-			start = CarbonUtil.getFirstIndexUsingBinarySearch(keyBlockArray,
-					startIndex, numerOfRows - 1, filterValues[i]);
+			start = CarbonUtil.getFirstIndexUsingBinarySearch(
+					dimensionColumnDataChunk, startIndex, numerOfRows - 1,
+					filterValues[i]);
 			if (start == -1) {
 				continue;
 			}
@@ -130,7 +140,7 @@ public class IncludeFilterExecuterImpl implements FilterExecuter {
 			last = start;
 			for (int j = start + 1; j < numerOfRows; j++) {
 				if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(
-						keyBlockArray.getKeyBlockData(), j
+						dimensionColumnDataChunk.getAllDictionaryData(), j
 								* filterValues[i].length,
 						filterValues[i].length, filterValues[i], 0,
 						filterValues[i].length) == 0) {
@@ -149,16 +159,16 @@ public class IncludeFilterExecuterImpl implements FilterExecuter {
 	}
 
 	private BitSet setFilterdIndexToBitSet(
-			ColumnarKeyStoreDataHolder keyBlockArray, int numerOfRows) {
+			DimensionColumnDataChunk dimensionColumnDataChunk, int numerOfRows) {
 		int start = 0;
 		int last = 0;
 		BitSet bitSet = new BitSet(numerOfRows);
 		int startIndex = 0;
-		byte[][] filterValues = dimColEvaluatorInfoList.get(0)
-				.getFilterValues();
+		byte[][] filterValues = dimColumnExecuterInfo.getFilterKeys();
 		for (int k = 0; k < filterValues.length; k++) {
-			start = CarbonUtil.getFirstIndexUsingBinarySearch(keyBlockArray,
-					startIndex, numerOfRows - 1, filterValues[k]);
+			start = CarbonUtil.getFirstIndexUsingBinarySearch(
+					dimensionColumnDataChunk, startIndex, numerOfRows - 1,
+					filterValues[k]);
 			if (start == -1) {
 				continue;
 			}
@@ -166,7 +176,7 @@ public class IncludeFilterExecuterImpl implements FilterExecuter {
 			last = start;
 			for (int j = start + 1; j < numerOfRows; j++) {
 				if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(
-						keyBlockArray.getKeyBlockData(), j
+						dimensionColumnDataChunk.getAllDictionaryData(), j
 								* filterValues[k].length,
 						filterValues[k].length, filterValues[k], 0,
 						filterValues[k].length) == 0) {
@@ -186,9 +196,8 @@ public class IncludeFilterExecuterImpl implements FilterExecuter {
 
 	public BitSet isScanRequired(byte[][] blkMaxVal, byte[][] blkMinVal) {
 		BitSet bitSet = new BitSet(1);
-		byte[][] filterValues = dimColEvaluatorInfoList.get(0)
-				.getFilterValues();
-		int columnIndex = dimColEvaluatorInfoList.get(0).getColumnIndex();
+		byte[][] filterValues = dimColumnExecuterInfo.getFilterKeys();
+		int columnIndex = dimColumnEvaluatorInfo.getColumnIndex();
 		boolean isScanRequired = false;
 		for (int k = 0; k < filterValues.length; k++) {
 			// filter value should be in range of max and min value i.e
@@ -211,6 +220,18 @@ public class IncludeFilterExecuterImpl implements FilterExecuter {
 			bitSet.set(0);
 		}
 		return bitSet;
+	}
+
+	@Override
+	public FilterExecuter getLeft() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public FilterExecuter getRight() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

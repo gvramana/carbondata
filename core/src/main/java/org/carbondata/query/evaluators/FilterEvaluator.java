@@ -22,7 +22,7 @@ package org.carbondata.query.evaluators;
 import java.util.BitSet;
 
 import org.carbondata.query.schema.metadata.FilterEvaluatorInfo;
-
+@Deprecated
 public interface FilterEvaluator {
   void resolve(FilterEvaluatorInfo info);
 

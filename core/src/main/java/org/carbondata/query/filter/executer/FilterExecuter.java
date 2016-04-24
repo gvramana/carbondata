@@ -20,25 +20,23 @@ package org.carbondata.query.filter.executer;
 
 import java.util.BitSet;
 
-import org.carbondata.query.evaluators.BlockDataHolder;
-import org.carbondata.query.evaluators.FilterProcessorPlaceHolder;
+import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
 
 public interface FilterExecuter {
 
 	/**
-	 * 
-	 * @param blockDataHolder
+	 * API will apply filter based on resolver instance
+	 * @param blocksChunkHolder
 	 * @param placeHolder
 	 * @return
 	 */
-    BitSet applyFilter(BlockDataHolder blockDataHolder,
-            FilterProcessorPlaceHolder placeHolder,int[] noDictionaryColIndexes);
+    BitSet applyFilter(BlocksChunkHolder blocksChunkHolder);
     /**
-     * 
-     * @param blockMaxValue
+     * API will verify whether the block can be shortlisted based on block
+     * max and min key.
+     * @param blockMaxValue, maximum value of the 
      * @param blockMinValue
-     * @return
+     * @return BitSet
      */
-    
     BitSet isScanRequired(byte[][] blockMaxValue, byte[][] blockMinValue);
 }

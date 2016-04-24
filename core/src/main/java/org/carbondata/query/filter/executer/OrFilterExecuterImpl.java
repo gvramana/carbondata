@@ -20,28 +20,26 @@ package org.carbondata.query.filter.executer;
 
 import java.util.BitSet;
 
-import org.carbondata.query.evaluators.BlockDataHolder;
-import org.carbondata.query.evaluators.FilterProcessorPlaceHolder;
+import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
 import org.carbondata.query.filter.resolver.FilterResolverIntf;
 
 public class OrFilterExecuterImpl implements FilterExecuter {
 
-	private FilterResolverIntf leftEvalutor;
-	private FilterResolverIntf rightEvalutor;
+	private FilterExecuter leftExecuter;
+	private FilterExecuter rightExecuter;
 
-	public OrFilterExecuterImpl(FilterResolverIntf leftEvalutor,
-			FilterResolverIntf rightEvalutor) {
-		this.leftEvalutor = leftEvalutor;
-		this.rightEvalutor = rightEvalutor;
+	public OrFilterExecuterImpl(FilterExecuter leftExecuter,
+			FilterExecuter rightExecuter) {
+		this.leftExecuter = leftExecuter;
+		this.rightExecuter = rightExecuter;
 	}
 
 	@Override
-	public BitSet applyFilter(BlockDataHolder blockDataHolder,
-			FilterProcessorPlaceHolder placeHolder,int[] noDictionaryIndexes) {
-		BitSet leftFilters = leftEvalutor.getFilterExecuterInstance()
-				.applyFilter(blockDataHolder, placeHolder,noDictionaryIndexes);
-		BitSet rightFilters = rightEvalutor.getFilterExecuterInstance()
-				.applyFilter(blockDataHolder, placeHolder,noDictionaryIndexes);
+	public BitSet applyFilter(BlocksChunkHolder blockChunkHolder) {
+		BitSet leftFilters = leftExecuter
+				.applyFilter(blockChunkHolder);
+		BitSet rightFilters =rightExecuter
+				.applyFilter(blockChunkHolder);
 		leftFilters.or(rightFilters);
 
 		return leftFilters;
@@ -49,9 +47,9 @@ public class OrFilterExecuterImpl implements FilterExecuter {
 
 	@Override
 	public BitSet isScanRequired(byte[][] blockMaxValue, byte[][] blockMinValue) {
-		BitSet leftFilters = leftEvalutor.getFilterExecuterInstance()
+		BitSet leftFilters = leftExecuter
 				.isScanRequired(blockMaxValue, blockMinValue);
-		BitSet rightFilters = rightEvalutor.getFilterExecuterInstance()
+		BitSet rightFilters = rightExecuter
 				.isScanRequired(blockMaxValue, blockMinValue);
 		leftFilters.or(rightFilters);
 		return leftFilters;

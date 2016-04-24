@@ -20,33 +20,28 @@ package org.carbondata.query.filter.executer;
 
 import java.util.BitSet;
 
-import org.carbondata.query.evaluators.BlockDataHolder;
-import org.carbondata.query.evaluators.FilterProcessorPlaceHolder;
-import org.carbondata.query.filter.resolver.FilterResolverIntf;
+import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
 
 public class AndFilterExecuterImpl implements FilterExecuter {
 
-	private FilterResolverIntf leftEvalutor;
-	private FilterResolverIntf rightEvalutor;
+	private FilterExecuter leftExecuter;
+	private FilterExecuter rightExecuter;
 
-	public AndFilterExecuterImpl(FilterResolverIntf leftEvalutor,
-			FilterResolverIntf rightEvalutor) {
-		this.leftEvalutor = leftEvalutor;
-		this.rightEvalutor = rightEvalutor;
+	public AndFilterExecuterImpl(FilterExecuter leftExecuter,
+			FilterExecuter rightExecuter) {
+		this.leftExecuter = leftExecuter;
+		this.rightExecuter = rightExecuter;
 	}
 
 	@Override
-	public BitSet applyFilter(BlockDataHolder blockDataHolder,
-			FilterProcessorPlaceHolder placeHolder, int[] noDictionaryColIndexes) {
-		BitSet leftFilters = leftEvalutor.getFilterExecuterInstance()
-				.applyFilter(blockDataHolder, placeHolder,
-						noDictionaryColIndexes);
+	public BitSet applyFilter(BlocksChunkHolder blockChunkHolder) {
+		BitSet leftFilters = leftExecuter
+				.applyFilter(blockChunkHolder);
 		if (leftFilters.isEmpty()) {
 			return leftFilters;
 		}
-		BitSet rightFilter = rightEvalutor.getFilterExecuterInstance()
-				.applyFilter(blockDataHolder, placeHolder,
-						noDictionaryColIndexes);
+		BitSet rightFilter = rightExecuter
+				.applyFilter(blockChunkHolder);
 		if (rightFilter.isEmpty()) {
 			return rightFilter;
 		}
@@ -56,18 +51,30 @@ public class AndFilterExecuterImpl implements FilterExecuter {
 
 	@Override
 	public BitSet isScanRequired(byte[][] blockMaxValue, byte[][] blockMinValue) {
-		BitSet leftFilters = leftEvalutor.getFilterExecuterInstance()
+		BitSet leftFilters = leftExecuter
 				.isScanRequired(blockMaxValue, blockMinValue);
 		if (leftFilters.isEmpty()) {
 			return leftFilters;
 		}
-		BitSet rightFilter = rightEvalutor.getFilterExecuterInstance()
+		BitSet rightFilter = rightExecuter
 				.isScanRequired(blockMaxValue, blockMinValue);
 		if (rightFilter.isEmpty()) {
 			return rightFilter;
 		}
 		leftFilters.and(rightFilter);
 		return leftFilters;
+	}
+
+	@Override
+	public FilterExecuter getLeft() {
+		// TODO Auto-generated method stub
+		return leftExecuter;
+	}
+
+	@Override
+	public FilterExecuter getRight() {
+		// TODO Auto-generated method stub
+		return rightExecuter;
 	}
 
 }

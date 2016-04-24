@@ -18,104 +18,93 @@
  */
 package org.carbondata.query.filter.executer;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
 import org.carbondata.common.logging.LogService;
 import org.carbondata.common.logging.LogServiceFactory;
+import org.carbondata.core.cache.dictionary.Dictionary;
+import org.carbondata.core.carbon.AbsoluteTableIdentifier;
 import org.carbondata.core.carbon.SqlStatement;
 import org.carbondata.core.carbon.SqlStatement.Type;
+import org.carbondata.core.carbon.datastore.chunk.DimensionColumnDataChunk;
 import org.carbondata.core.constants.CarbonCommonConstants;
-import org.carbondata.core.datastorage.store.columnar.ColumnarKeyStoreDataHolder;
+import org.carbondata.core.util.CarbonUtil;
 import org.carbondata.query.aggregator.MeasureAggregator;
 import org.carbondata.query.aggregator.util.AggUtil;
+import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
 import org.carbondata.query.carbonfilterinterface.RowImpl;
 import org.carbondata.query.carbonfilterinterface.RowIntf;
 import org.carbondata.query.complex.querytypes.GenericQueryType;
-import org.carbondata.query.datastorage.Member;
-import org.carbondata.query.evaluators.BlockDataHolder;
-import org.carbondata.query.evaluators.DimColumnEvaluatorInfo;
-import org.carbondata.query.evaluators.FilterProcessorPlaceHolder;
+import org.carbondata.query.evaluators.DimColumnResolvedFilterInfo;
 import org.carbondata.query.evaluators.MsrColumnEvalutorInfo;
 import org.carbondata.query.expression.Expression;
 import org.carbondata.query.expression.exception.FilterUnsupportedException;
+import org.carbondata.query.filters.measurefilter.util.FilterUtil;
 import org.carbondata.query.util.CarbonEngineLogEvent;
 import org.carbondata.query.util.DataTypeConverter;
-import org.carbondata.query.util.QueryExecutorUtility;
 
 public class RowLevelFilterExecuterImpl implements FilterExecuter {
 
-	private List<DimColumnEvaluatorInfo> dimColEvaluatorInfoList;
+	private List<DimColumnResolvedFilterInfo> dimColEvaluatorInfoList;
 	private List<MsrColumnEvalutorInfo> msrColEvalutorInfoList;
 	private Expression exp;
+	private AbsoluteTableIdentifier tableIdentifier;
     private static final LogService LOGGER =
             LogServiceFactory.getLogService(RowLevelFilterExecuterImpl.class.getName());
 
 	public RowLevelFilterExecuterImpl(
-			List<DimColumnEvaluatorInfo> dimColEvaluatorInfoList,
-			List<MsrColumnEvalutorInfo> msrColEvalutorInfoList, Expression exp) {
+			List<DimColumnResolvedFilterInfo> dimColEvaluatorInfoList,
+			List<MsrColumnEvalutorInfo> msrColEvalutorInfoList, Expression exp, AbsoluteTableIdentifier tableIdentifier) {
 		this.dimColEvaluatorInfoList = dimColEvaluatorInfoList;
 		this.msrColEvalutorInfoList = msrColEvalutorInfoList;
 		this.exp = exp;
+		this.tableIdentifier=tableIdentifier;
 	}
 
 	@Override
-	public BitSet applyFilter(BlockDataHolder blockDataHolder,
-			FilterProcessorPlaceHolder placeHolder, int[] noDictionaryColIndexes) {
-		for (DimColumnEvaluatorInfo dimColumnEvaluatorInfo : dimColEvaluatorInfoList) {
+	public BitSet applyFilter(BlocksChunkHolder blockChunkHolder) {
+		for (DimColumnResolvedFilterInfo dimColumnEvaluatorInfo : dimColEvaluatorInfoList) {
 			if (dimColumnEvaluatorInfo.getDims().getDataType() != Type.ARRAY
 					&& dimColumnEvaluatorInfo.getDims().getDataType() != Type.STRUCT) {
-				if (null == blockDataHolder.getColumnarKeyStore()[dimColumnEvaluatorInfo
+				if (null == blockChunkHolder.getDimensionDataChunk()[dimColumnEvaluatorInfo
 						.getColumnIndex()]) {
-					blockDataHolder.getColumnarKeyStore()[dimColumnEvaluatorInfo
-							.getColumnIndex()] = blockDataHolder
-							.getLeafDataBlock().getColumnarKeyStore(
-									blockDataHolder.getFileHolder(),
-									dimColumnEvaluatorInfo.getColumnIndex(),
-									false, noDictionaryColIndexes);
-				} else {
-					if (!blockDataHolder.getColumnarKeyStore()[dimColumnEvaluatorInfo
-							.getColumnIndex()].getColumnarKeyStoreMetadata()
-							.isUnCompressed()) {
-						blockDataHolder.getColumnarKeyStore()[dimColumnEvaluatorInfo
-								.getColumnIndex()].unCompress();
-					}
-				}
+					blockChunkHolder.getDimensionDataChunk()[dimColumnEvaluatorInfo
+							.getColumnIndex()] = blockChunkHolder
+							.getDataBlock().getDimensionChunk(
+									blockChunkHolder.getFileReader(),
+									dimColumnEvaluatorInfo.getColumnIndex());
+				} 
 			} else {
 				GenericQueryType complexType = dimColumnEvaluatorInfo
 						.getComplexTypesWithBlockStartIndex().get(
 								dimColumnEvaluatorInfo.getColumnIndex());
-				complexType.fillRequiredBlockData(blockDataHolder);
+				//@TODO need to handle complex type block
+				//complexType.fillRequiredBlockData(blockDataHolder);
 			}
 		}
 
 		// CHECKSTYLE:OFF Approval No:Approval-V1R2C10_001
 		for (MsrColumnEvalutorInfo msrColumnEvalutorInfo : msrColEvalutorInfoList) {
 			if (msrColumnEvalutorInfo.isMeasureExistsInCurrentSlice()
-					&& null == blockDataHolder.getMeasureBlocks()[msrColumnEvalutorInfo
+					&& null == blockChunkHolder.getMeasureDataChunk()[msrColumnEvalutorInfo
 							.getColumnIndex()]) {
-				blockDataHolder.getMeasureBlocks()[msrColumnEvalutorInfo
-						.getColumnIndex()] = blockDataHolder
-						.getLeafDataBlock()
-						.getNodeMsrDataWrapper(
-								msrColumnEvalutorInfo.getColumnIndex(),
-								blockDataHolder.getFileHolder()).getValues()[msrColumnEvalutorInfo
-						.getColumnIndex()];
+				blockChunkHolder.getMeasureDataChunk()[msrColumnEvalutorInfo
+						.getColumnIndex()] = blockChunkHolder.getDataBlock()
+						.getMeasureChunk(blockChunkHolder.getFileReader(),
+								msrColumnEvalutorInfo.getColumnIndex());
 			}
 		}
 		// CHECKSTYLE:ON
 
-		int numberOfRows = blockDataHolder.getLeafDataBlock().getnKeys();
+		int numberOfRows = blockChunkHolder.getDataBlock().nodeSize();
 		BitSet set = new BitSet(numberOfRows);
 		RowIntf row = new RowImpl();
 
 		// CHECKSTYLE:OFF Approval No:Approval-V1R2C10_007
 		for (int index = 0; index < numberOfRows; index++) {
-			createRow(blockDataHolder, row, index);
+			createRow(blockChunkHolder, row, index);
 			try {
 				Boolean rslt = exp.evaluate(row).getBoolean();
 				if (null != rslt && rslt) {
@@ -131,12 +120,12 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 		return set;
 	}
 
-	private void createRow(BlockDataHolder blockDataHolder, RowIntf row,
+	private void createRow(BlocksChunkHolder blockChunkHolder, RowIntf row,
 			int index) {
 		Object[] record = new Object[dimColEvaluatorInfoList.size()
 				+ msrColEvalutorInfoList.size()];
 		String memberString = null;
-		for (DimColumnEvaluatorInfo dimColumnEvaluatorInfo : dimColEvaluatorInfoList) {
+		for (DimColumnResolvedFilterInfo dimColumnEvaluatorInfo : dimColEvaluatorInfoList) {
 			if (dimColumnEvaluatorInfo.getDims().getDataType() != Type.ARRAY
 					&& dimColumnEvaluatorInfo.getDims().getDataType() != Type.STRUCT) {
 				if (!dimColumnEvaluatorInfo.isDimensionExistsInCurrentSilce()) {
@@ -144,14 +133,14 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 							.getDefaultValue();
 				}
 				if (dimColumnEvaluatorInfo.getDims().isNoDictionaryDim()) {
-					ColumnarKeyStoreDataHolder columnarKeyStoreDataHolder = blockDataHolder
-							.getColumnarKeyStore()[dimColumnEvaluatorInfo
+					DimensionColumnDataChunk dimensionColumnDataChunk = blockChunkHolder
+							.getDimensionDataChunk()[dimColumnEvaluatorInfo
 							.getColumnIndex()];
-					if (null != columnarKeyStoreDataHolder
-							.getNoDictionaryValBasedKeyBlockData()) {
+					if (null != dimensionColumnDataChunk
+							.getAllNonDictionaryChunk()) {
 						memberString = readMemberBasedOnNoDictionaryVal(
 								dimColumnEvaluatorInfo,
-								columnarKeyStoreDataHolder, index);
+								dimensionColumnDataChunk, index);
 						if (null != memberString) {
 							if (memberString
 									.equals(CarbonCommonConstants.MEMBER_DEFAULT_VAL)) {
@@ -166,18 +155,17 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 						continue;
 					}
 				} else {
-					Member member = QueryExecutorUtility
-							.getMemberBySurrogateKey(
-									dimColumnEvaluatorInfo.getDims(),
-									blockDataHolder.getColumnarKeyStore()[dimColumnEvaluatorInfo
-											.getColumnIndex()]
-											.getSurrogateKey(index),
-									dimColumnEvaluatorInfo.getSlices(),
-									dimColumnEvaluatorInfo
-											.getCurrentSliceIndex());
-
-					if (null != member) {
-						memberString = member.toString();
+					Dictionary forwardDictionary = FilterUtil
+							.getForwardDictionaryCache(tableIdentifier,
+									dimColumnEvaluatorInfo.getDimension());
+					byte[] rawData = blockChunkHolder.getDimensionDataChunk()[dimColumnEvaluatorInfo
+							.getColumnIndex()].getChunkData(index);
+					ByteBuffer byteBuffer = ByteBuffer.allocate(rawData.length);
+					int dictionaryValue = CarbonUtil.getSurrogateKey(rawData,
+							byteBuffer);
+					memberString = forwardDictionary
+							.getDictionaryValueForKey(dictionaryValue);
+					if (null != memberString) {
 						if (memberString
 								.equals(CarbonCommonConstants.MEMBER_DEFAULT_VAL)) {
 							memberString = null;
@@ -189,26 +177,26 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 											.getDataType());
 				}
 			} else {
-				try {
-					GenericQueryType complexType = dimColumnEvaluatorInfo
-							.getComplexTypesWithBlockStartIndex().get(
-									dimColumnEvaluatorInfo.getColumnIndex());
-					ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-					DataOutputStream dataOutputStream = new DataOutputStream(
-							byteStream);
-					complexType.parseBlocksAndReturnComplexColumnByteArray(
-							blockDataHolder.getColumnarKeyStore(), index,
-							dataOutputStream);
-					record[dimColumnEvaluatorInfo.getRowIndex()] = complexType
-							.getDataBasedOnDataTypeFromSurrogates(
-									dimColumnEvaluatorInfo.getSlices(),
-									ByteBuffer.wrap(byteStream.toByteArray()),
-									dimColumnEvaluatorInfo.getDimensions());
-					byteStream.close();
-				} catch (IOException e) {
-					LOGGER.info(CarbonEngineLogEvent.UNIBI_CARBONENGINE_MSG, e,
-							e.getMessage());
-				}
+				// TODO Handling of complex type
+				/*
+				 * try { GenericQueryType complexType = dimColumnEvaluatorInfo
+				 * .getComplexTypesWithBlockStartIndex().get(
+				 * dimColumnEvaluatorInfo.getColumnIndex());
+				 * ByteArrayOutputStream byteStream = new
+				 * ByteArrayOutputStream(); DataOutputStream dataOutputStream =
+				 * new DataOutputStream( byteStream);
+				 * complexType.parseBlocksAndReturnComplexColumnByteArray(
+				 * blockChunkHolder.getColumnarKeyStore(), index,
+				 * dataOutputStream); //TODO need to update the
+				 * getDataBasedOnDataTypeFromSurrogates() with CarbonDimension
+				 * // record[dimColumnEvaluatorInfo.getRowIndex()] = complexType
+				 * // .getDataBasedOnDataTypeFromSurrogates( // tableIdentifier,
+				 * // ByteBuffer.wrap(byteStream.toByteArray()), //
+				 * dimColumnEvaluatorInfo.getDimensions()); byteStream.close();
+				 * } catch (IOException e) {
+				 * LOGGER.info(CarbonEngineLogEvent.UNIBI_CARBONENGINE_MSG, e,
+				 * e.getMessage()); }
+				 */
 
 			}
 		}
@@ -216,11 +204,11 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 		SqlStatement.Type msrType;
 
 		for (MsrColumnEvalutorInfo msrColumnEvalutorInfo : msrColEvalutorInfoList) {
-			switch (msrColumnEvalutorInfo.getType()) {
-			case 'l':
+			switch (msrColumnEvalutorInfo.getDataType()) {
+			case LongType:
 				msrType = SqlStatement.Type.LONG;
 				break;
-			case 'b':
+			case DecimalType:
 				msrType = SqlStatement.Type.DECIMAL;
 				break;
 			default:
@@ -236,8 +224,8 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 							msrColumnEvalutorInfo.getAggregator(), false,
 							false, null, false, 0, msrType);
 					aggregator
-							.merge(blockDataHolder.getMeasureBlocks()[msrColumnEvalutorInfo
-									.getColumnIndex()]
+							.merge(blockChunkHolder.getMeasureDataChunk()[msrColumnEvalutorInfo
+									.getColumnIndex()].getMeasureDataHolder()
 									.getReadableByteArrayValueByIndex(index));
 					switch (msrType) {
 					case LONG:
@@ -256,25 +244,22 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 					Object msrValue;
 					switch (msrType) {
 					case LONG:
-						msrValue = blockDataHolder.getMeasureBlocks()[msrColumnEvalutorInfo
-								.getColumnIndex()]
+						msrValue = blockChunkHolder.getMeasureDataChunk()[msrColumnEvalutorInfo
+								.getColumnIndex()].getMeasureDataHolder()
 								.getReadableLongValueByIndex(index);
 						break;
 					case DECIMAL:
-						msrValue = blockDataHolder.getMeasureBlocks()[msrColumnEvalutorInfo
-								.getColumnIndex()]
+						msrValue = blockChunkHolder.getMeasureDataChunk()[msrColumnEvalutorInfo
+								.getColumnIndex()].getMeasureDataHolder()
 								.getReadableBigDecimalValueByIndex(index);
 						break;
 					default:
-						msrValue = blockDataHolder.getMeasureBlocks()[msrColumnEvalutorInfo
-								.getColumnIndex()]
+						msrValue = blockChunkHolder.getMeasureDataChunk()[msrColumnEvalutorInfo
+								.getColumnIndex()].getMeasureDataHolder()
 								.getReadableDoubleValueByIndex(index);
 					}
-					if (msrColumnEvalutorInfo.getUniqueValue().equals(msrValue)) {
-						record[msrColumnEvalutorInfo.getRowIndex()] = null;
-					} else {
-						record[msrColumnEvalutorInfo.getRowIndex()] = msrValue;
-					}
+					record[msrColumnEvalutorInfo.getRowIndex()] = msrValue;
+
 				}
 			}
 		}
@@ -285,25 +270,24 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 	 * Reading the blocks for direct surrogates.
 	 *
 	 * @param dimColumnEvaluatorInfo
-	 * @param columnarKeyStoreDataHolder
+	 * @param dimensionColumnDataChunk
 	 * @param index
 	 * @return
 	 */
 	private String readMemberBasedOnNoDictionaryVal(
-			DimColumnEvaluatorInfo dimColumnEvaluatorInfo,
-			ColumnarKeyStoreDataHolder columnarKeyStoreDataHolder, int index) {
+			DimColumnResolvedFilterInfo dimColumnEvaluatorInfo,
+			DimensionColumnDataChunk dimensionColumnDataChunk, int index) {
 		byte[] noDictionaryVals;
-		if (null != columnarKeyStoreDataHolder.getColumnarKeyStoreMetadata()
-				.getColumnReverseIndex()) {
+		if (null != dimensionColumnDataChunk.getAttributes()
+				.getInvertedIndexesReverse()) {
 			// Getting the data for direct surrogates.
-			noDictionaryVals = columnarKeyStoreDataHolder
-					.getNoDictionaryValBasedKeyBlockData().get(
-							columnarKeyStoreDataHolder
-									.getColumnarKeyStoreMetadata()
-									.getColumnReverseIndex()[index]);
+			noDictionaryVals = dimensionColumnDataChunk
+					.getAllNonDictionaryChunk().get(
+							dimensionColumnDataChunk.getAttributes()
+									.getInvertedIndexesReverse()[index]);
 		} else {
-			noDictionaryVals = columnarKeyStoreDataHolder
-					.getNoDictionaryValBasedKeyBlockData().get(index);
+			noDictionaryVals = dimensionColumnDataChunk
+					.getAllNonDictionaryChunk().get(index);
 		}
 		return new String(noDictionaryVals);
 	}
@@ -313,6 +297,18 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 		BitSet bitSet = new BitSet(1);
 		bitSet.set(0);
 		return bitSet;
+	}
+
+	@Override
+	public FilterExecuter getLeft() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public FilterExecuter getRight() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

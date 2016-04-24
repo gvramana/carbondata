@@ -18,11 +18,14 @@
  */
 package org.carbondata.query.filter.resolver;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import org.carbondata.core.constants.CarbonCommonConstants;
-import org.carbondata.query.evaluators.DimColumnEvaluatorInfo;
+import org.carbondata.core.carbon.AbsoluteTableIdentifier;
+import org.carbondata.core.carbon.datastore.IndexKey;
+import org.carbondata.core.carbon.datastore.block.AbstractIndex;
+import org.carbondata.core.keygenerator.KeyGenerator;
+import org.carbondata.query.carbonfilterinterface.FilterExecuterType;
+import org.carbondata.query.evaluators.DimColumnResolvedFilterInfo;
 import org.carbondata.query.expression.ColumnExpression;
 import org.carbondata.query.expression.DataType;
 import org.carbondata.query.expression.Expression;
@@ -32,28 +35,25 @@ import org.carbondata.query.filter.executer.ExcludeFilterExecuterImpl;
 import org.carbondata.query.filter.executer.FilterExecuter;
 import org.carbondata.query.filter.executer.IncludeFilterExecuterImpl;
 import org.carbondata.query.filters.measurefilter.util.FilterUtil;
-import org.carbondata.query.schema.metadata.FilterEvaluatorInfo;
 
 public class ConditionalFilterResolverImpl implements FilterResolverIntf {
 
-	private ArrayList<DimColumnEvaluatorInfo> dimColEvaluatorInfoList;
+	private DimColumnResolvedFilterInfo dimColResolvedFilterInfo;
 	protected Expression exp;
 	protected boolean isExpressionResolve;
 	protected boolean isIncludeFilter;
 
 	public ConditionalFilterResolverImpl(Expression exp,
 			boolean isExpressionResolve, boolean isIncludeFilter) {
-		this.dimColEvaluatorInfoList = new ArrayList<DimColumnEvaluatorInfo>(
-				CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
 		this.exp = exp;
 		this.isExpressionResolve = isExpressionResolve;
 		this.isIncludeFilter = isIncludeFilter;
+		this.dimColResolvedFilterInfo=new DimColumnResolvedFilterInfo();
 	}
 
 	@Override
-	public void resolve(FilterEvaluatorInfo info) {
+	public void resolve(AbsoluteTableIdentifier absoluteTableIdentifier) {
 
-		DimColumnEvaluatorInfo dimColumnEvaluatorInfo = new DimColumnEvaluatorInfo();
 		if ((!isExpressionResolve)
 				&& exp instanceof BinaryConditionalExpression) {
 			BinaryConditionalExpression binaryConditionalExpression = (BinaryConditionalExpression) exp;
@@ -75,19 +75,12 @@ public class ConditionalFilterResolverImpl implements FilterResolverIntf {
 					if (FilterUtil.checkIfExpressionContainsColumn(rightExp)) {
 						isExpressionResolve = true;
 					} else {
-						dimColumnEvaluatorInfo.setColumnIndex(info
-								.getTableSegment()
-								.getSegmentProperties()
-								.getDimensionOrdinalToBlockMapping()
-								.get(columnExpression.getDimension()
-										.getOrdinal()));
-						columnExpression.getDimension().getEncoder();
-						dimColumnEvaluatorInfo
-								.setFilterValues(FilterUtil.getFilterList(info,
+
+						dimColResolvedFilterInfo.setFilterValues(FilterUtil
+								.getFilterList(absoluteTableIdentifier,
 										rightExp, columnExpression,
 										this.isIncludeFilter));
-						dimColumnEvaluatorInfo.setDimension(columnExpression
-								.getDimension());
+						dimColResolvedFilterInfo.setDimension(columnExpression.getDimension());
 					}
 				}
 			} else if (rightExp instanceof ColumnExpression) {
@@ -105,44 +98,43 @@ public class ConditionalFilterResolverImpl implements FilterResolverIntf {
 					if (FilterUtil.checkIfExpressionContainsColumn(leftExp)) {
 						isExpressionResolve = true;
 					} else {
-						dimColumnEvaluatorInfo.setColumnIndex(columnExpression
-								.getDim().getOrdinal());
-						dimColumnEvaluatorInfo.setFilterValues(FilterUtil
-								.getFilterList(info, leftExp, columnExpression,
-										isIncludeFilter));
-						dimColumnEvaluatorInfo.setDimension(columnExpression
-								.getDimension());
+						dimColResolvedFilterInfo
+								.setColumnIndex(columnExpression.getDimension()
+										.getOrdinal());
+						dimColResolvedFilterInfo
+								.addDimensionResolvedFilterInstance(
+										columnExpression.getDimension(),
+										FilterUtil.getFilterList(
+												absoluteTableIdentifier,
+												leftExp, columnExpression,
+												isIncludeFilter));
 					}
 				}
 			} else {
 				isExpressionResolve = true;
 			}
 		}
-
 		if (isExpressionResolve && exp instanceof ConditionalExpression) {
 			ConditionalExpression conditionalExpression = (ConditionalExpression) exp;
 			List<ColumnExpression> columnList = conditionalExpression
 					.getColumnList();
-			dimColumnEvaluatorInfo.setColumnIndex(columnList.get(0).getDimension()
-					.getOrdinal());
+			dimColResolvedFilterInfo.setColumnIndex(columnList.get(0)
+					.getDimension().getOrdinal());
 			if (columnList.get(0).getDimension().getEncoder().isEmpty()) {
-				dimColumnEvaluatorInfo.setFilterValues(FilterUtil
-						.getFilterList(info, exp, columnList.get(0),
-								isIncludeFilter));
+				dimColResolvedFilterInfo.setFilterValues(FilterUtil
+						.getFilterList(absoluteTableIdentifier, exp,
+								columnList.get(0), isIncludeFilter));
 			} else if (!(columnList.get(0).getDimension().getDataType() == org.carbondata.core.carbon.metadata.datatype.DataType.STRUCT || columnList
 					.get(0).getDimension().getDataType() == org.carbondata.core.carbon.metadata.datatype.DataType.STRUCT)) {
-				dimColumnEvaluatorInfo.setFilterValues(FilterUtil
-						.getFilterListForAllMembers(info, exp,
-								columnList.get(0), isIncludeFilter));
+				dimColResolvedFilterInfo.setFilterValues(FilterUtil
+						.getFilterListForAllValues(absoluteTableIdentifier,
+								exp, columnList.get(0), isIncludeFilter));
 			}
 		}
-		dimColEvaluatorInfoList.add(dimColumnEvaluatorInfo);
 
 	}
 
 	
-
-	@Override
 	public FilterResolverIntf getLeft() {
 		// TODO Auto-generated method stub
 		return null;
@@ -160,11 +152,67 @@ public class ConditionalFilterResolverImpl implements FilterResolverIntf {
 		switch (exp.getFilterExpressionType()) {
 		case NOT_EQUALS:
 		case NOT_IN:
-			return new ExcludeFilterExecuterImpl(dimColEvaluatorInfoList);
+			return new ExcludeFilterExecuterImpl(dimColResolvedFilterInfo);
 
 		default:
-			return new IncludeFilterExecuterImpl(dimColEvaluatorInfoList);
+			return new IncludeFilterExecuterImpl(dimColResolvedFilterInfo);
 		}
 	}
+	
+	public DimColumnResolvedFilterInfo getDimColResolvedFilterInfo()
+	{
+		return dimColResolvedFilterInfo;
+	}
 
+	@Override
+	public IndexKey getstartKey(KeyGenerator keyGen) {
+		IndexKey startIndexKey = null;
+		if (null == dimColResolvedFilterInfo.getStarIndexKey()) {
+			long[] startKey = FilterUtil.getStartKey(dimColResolvedFilterInfo,
+					keyGen);
+			startIndexKey = FilterUtil.createIndexKeyFromResolvedFilterVal(
+					startKey, keyGen);
+			dimColResolvedFilterInfo.setStarIndexKey(startIndexKey);
+		} else {
+			return dimColResolvedFilterInfo.getStarIndexKey();
+		}
+		return startIndexKey;
+	}
+
+	@Override
+	public IndexKey getEndKey(AbstractIndex tableSegment,
+			AbsoluteTableIdentifier absoluteTableIdentifier) {
+		long[] endKey = new long[tableSegment.getSegmentProperties()
+				.getDimensionKeyGenerator().getDimCount()];
+		IndexKey endIndexKey = null;
+		if (null == dimColResolvedFilterInfo.getEndIndexKey())
+
+		{
+			endKey = FilterUtil.getEndKey(dimColResolvedFilterInfo
+					.getDimensionResolvedFilterInstance(),
+					absoluteTableIdentifier, endKey, tableSegment
+							.getSegmentProperties().getDimensions());
+			endIndexKey = FilterUtil.createIndexKeyFromResolvedFilterVal(
+					endKey, tableSegment.getSegmentProperties()
+							.getDimensionKeyGenerator());
+		} else {
+			return dimColResolvedFilterInfo.getEndIndexKey();
+		}
+		return endIndexKey;
+	}
+
+	
+
+	@Override
+	public FilterExecuterType getFilterExecuterType() {
+		switch (exp.getFilterExpressionType()) {
+		case NOT_EQUALS:
+		case NOT_IN:
+			return FilterExecuterType.EXCLUDE;
+
+		default:
+			return FilterExecuterType.INCLUDE;
+		}
+
+	}
 }

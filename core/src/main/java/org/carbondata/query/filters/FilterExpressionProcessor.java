@@ -21,95 +21,103 @@ package org.carbondata.query.filters;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
+import org.carbondata.common.logging.LogService;
+import org.carbondata.common.logging.LogServiceFactory;
+import org.carbondata.core.carbon.AbsoluteTableIdentifier;
 import org.carbondata.core.carbon.datastore.DataRefNode;
 import org.carbondata.core.carbon.datastore.DataRefNodeFinder;
 import org.carbondata.core.carbon.datastore.IndexKey;
+import org.carbondata.core.carbon.datastore.block.AbstractIndex;
 import org.carbondata.core.carbon.datastore.impl.btree.BTreeNode;
 import org.carbondata.core.carbon.datastore.impl.btree.BtreeDataRefNodeFinder;
-import org.carbondata.core.keygenerator.KeyGenException;
-import org.carbondata.core.metadata.CarbonMetadata.Dimension;
 import org.carbondata.query.expression.Expression;
 import org.carbondata.query.filter.resolver.FilterResolverIntf;
 import org.carbondata.query.filters.measurefilter.util.FilterUtil;
-import org.carbondata.query.schema.metadata.DimColumnFilterInfo;
-import org.carbondata.query.schema.metadata.FilterEvaluatorInfo;
+import org.carbondata.query.util.CarbonEngineLogEvent;
 
 public class FilterExpressionProcessor implements FilterProcessor {
 
+    private static final LogService LOGGER =
+            LogServiceFactory.getLogService(FilterExpressionProcessor.class.getName());
+
 	/**
 	 * Implementation will provide the resolved form of filters based on the
-	 * filter expression tree which is been passed.
+	 * filter expression tree which is been passed in Expression instance.
 	 * 
 	 * @param expressionTree
 	 *            , filter expression tree
-	 * @param info
-	 *            ,certain metadata required for resolving filter.
-	 * @return
+	 * @param tableIdentifier
+	 *            ,contains carbon store informations
+	 * @return a filter resolver tree
 	 */
 	public FilterResolverIntf getFilterResolver(Expression expressionTree,
-			FilterEvaluatorInfo info) {
-		if (null != expressionTree && null != info) {
-			FilterUtil.getFilterResolver(expressionTree, info);
-			
-		}
+			AbsoluteTableIdentifier tableIdentifier) {
+		if (null != expressionTree && null != tableIdentifier) {
+			FilterUtil.getFilterResolver(expressionTree, tableIdentifier);
 
+		}
 		return null;
 	}
 
 	/**
-	 * This API will scan the Segment level all btrees and selects the required blocks
-	 * inorder to push the same to executer.
+	 * This API will scan the Segment level all btrees and selects the required
+	 * block reference  nodes inorder to push the same to executer for applying filters
+	 * on the respective data reference node.
+	 * 
+	 * Following Algorithm is followed in below API
+	 * Step:1 Get the start end key based on the filter tree resolver information
+	 * 
+	 * Step:2 Prepare the IndexKeys inorder to scan the tree and get the start and end reference
+	 * node(block)
+	 * 
+	 * Step:3 Once data reference node ranges retrieved traverse the node within this range
+	 * and select the node based on the block min and max value and the filter value.
+	 * 
+	 * Step:4 The selected blocks will be send to executers for applying the filters with the help
+	 * of Filter executers.
 	 */
-	public List<DataRefNode> getFilterredBlocks(
-			List<BTreeNode> listOfTree,
-			FilterResolverIntf filterResolver, FilterEvaluatorInfo filterInfo) {
+	public List<DataRefNode> getFilterredBlocks(List<BTreeNode> listOfTree,
+			FilterResolverIntf filterResolver, AbstractIndex tableSegment,
+			AbsoluteTableIdentifier tableIdentifier) {
 		// Need to get the current dimension tables
 		List<DataRefNode> listOfDataBlocksToScan = new ArrayList<DataRefNode>();
-		long[] startKey = new long[filterInfo.getTableSegment().getSegmentProperties().getDimensionKeyGenerator().getDimCount()];
-		Map<Dimension, List<DimColumnFilterInfo>> dimensionFilter = filterInfo
-				.getInfo().getDimensionFilter();
-		for (Entry<Dimension, List<DimColumnFilterInfo>> entry : dimensionFilter
-				.entrySet()) {
-			List<DimColumnFilterInfo> values = entry.getValue();
-			if (null == values) {
-				continue;
-			}
-			boolean isExcludePresent = false;
-			for (DimColumnFilterInfo info : values) {
-				if (!info.isIncludeFilter()) {
-					isExcludePresent = true;
-				}
-			}
-			if (isExcludePresent) {
-				continue;
-			}
-			for (DimColumnFilterInfo info : values) {
-				if (startKey[entry.getKey().getOrdinal()] < info
-						.getFilterList().get(0)) {
-					startKey[entry.getKey().getOrdinal()] = info
-							.getFilterList().get(0);
-				}
-			}
-		}
-		IndexKey serachKey = createIndexKeyFromResolvedFilterVal(startKey,
-				filterInfo);
+		// getting the start and end index key based on filter for hitting the
+		// selected block reference nodes based on filter resolver tree.
+		LOGGER.info(CarbonEngineLogEvent.UNIBI_CARBONENGINE_MSG,
+				"preparing the start and end key for finding"
+						+ "start and end block as per filter resolver");
+		IndexKey searchStartKey = filterResolver.getstartKey(tableSegment
+				.getSegmentProperties().getDimensionKeyGenerator());
+		IndexKey searchEndKey = filterResolver.getEndKey(tableSegment,
+				tableIdentifier);
+		LOGGER.info(CarbonEngineLogEvent.UNIBI_CARBONENGINE_MSG,
+				"Successfully retrieved the start and end key");
+		long startTimeInMillis = System.currentTimeMillis();
 		for (BTreeNode btreeNode : listOfTree) {
-			DataRefNodeFinder blockFinder = new BtreeDataRefNodeFinder(filterInfo.getTableSegment().getSegmentProperties().getDimensionColumnsValueSize());
-			
-			DataRefNode startBlock =blockFinder.findFirstDataBlock(btreeNode.getNextDataRefNode(), serachKey);
-			DataRefNode endBlock = blockFinder.findLastDataBlock(btreeNode.getNextDataRefNode(), serachKey);
-			
-			
+			DataRefNodeFinder blockFinder = new BtreeDataRefNodeFinder(
+					tableSegment.getSegmentProperties()
+							.getDimensionColumnsValueSize());
+			DataRefNode startBlock = blockFinder.findFirstDataBlock(
+					btreeNode.getNextDataRefNode(), searchStartKey);
+			DataRefNode endBlock = blockFinder.findLastDataBlock(
+					btreeNode.getNextDataRefNode(), searchEndKey);
 			while (startBlock != endBlock) {
-				startBlock=startBlock.getNextDataRefNode();
-				addBlockBasedOnMinMaxValue(filterResolver, listOfDataBlocksToScan,startBlock);
+				startBlock = startBlock.getNextDataRefNode();
+				addBlockBasedOnMinMaxValue(filterResolver,
+						listOfDataBlocksToScan, startBlock);
 			}
-			addBlockBasedOnMinMaxValue(filterResolver, listOfDataBlocksToScan,endBlock);
-			
+			addBlockBasedOnMinMaxValue(filterResolver, listOfDataBlocksToScan,
+					endBlock);
+
 		}
+		LOGGER.info(
+				CarbonEngineLogEvent.UNIBI_CARBONENGINE_MSG,
+				"Total Time in retrieving the data reference node"
+						+ "after scanning the btree "
+						+ (System.currentTimeMillis() - startTimeInMillis)
+						+ " Total number of data reference node for executing filter(s) "
+						+ listOfDataBlocksToScan.size());
 		return listOfDataBlocksToScan;
 	}
 
@@ -129,22 +137,4 @@ public class FilterExpressionProcessor implements FilterProcessor {
 
 		}
 	}
-
-	private IndexKey createIndexKeyFromResolvedFilterVal(long[] startKey,
-			FilterEvaluatorInfo filterInfo) {
-		IndexKey indexKey = null;
-		try {
-			indexKey = new IndexKey();
-			
-			indexKey.setDictionaryKeys(filterInfo.getTableSegment()
-					.getSegmentProperties().getDimensionKeyGenerator()
-					.generateKey(startKey));
-
-		} catch (KeyGenException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return indexKey;
-	}
-
 }

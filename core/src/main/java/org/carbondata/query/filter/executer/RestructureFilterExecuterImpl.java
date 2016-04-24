@@ -19,30 +19,33 @@
 package org.carbondata.query.filter.executer;
 
 import java.util.BitSet;
-import java.util.List;
 
-import org.carbondata.query.evaluators.BlockDataHolder;
-import org.carbondata.query.evaluators.DimColumnEvaluatorInfo;
-import org.carbondata.query.evaluators.FilterProcessorPlaceHolder;
+import org.carbondata.core.keygenerator.KeyGenerator;
+import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
+import org.carbondata.query.evaluators.DimColumnExecuterFilterInfo;
+import org.carbondata.query.evaluators.DimColumnResolvedFilterInfo;
+import org.carbondata.query.filters.measurefilter.util.FilterUtil;
 
 public class RestructureFilterExecuterImpl implements FilterExecuter {
 
-	private List<DimColumnEvaluatorInfo> dimColEvaluatorInfoList;
-
+	DimColumnExecuterFilterInfo dimColumnExecuterInfo;
+	public RestructureFilterExecuterImpl()
+	{
+		
+	}
 	public RestructureFilterExecuterImpl(
-			List<DimColumnEvaluatorInfo> dimColEvaluatorInfoList) {
-		this.dimColEvaluatorInfoList = dimColEvaluatorInfoList;
+		DimColumnResolvedFilterInfo dimColumnResolvedFilterInfo, KeyGenerator blockKeyGenerator) {
+		FilterUtil.prepareKeysFromSurrogates(
+				dimColumnResolvedFilterInfo.getFilterValues(), blockKeyGenerator,
+				dimColumnResolvedFilterInfo.getDimension(), dimColumnExecuterInfo);
 	}
 
 	@Override
-	public BitSet applyFilter(BlockDataHolder blockDataHolder,
-			FilterProcessorPlaceHolder placeHolder,int[] noDictionaryColIndexes) {
-		BitSet bitSet = new BitSet(blockDataHolder.getLeafDataBlock()
-				.getnKeys());
-		byte[][] filterValues = dimColEvaluatorInfoList.get(0)
-				.getFilterValues();
+	public BitSet applyFilter(BlocksChunkHolder blocksChunkHolder) {
+		BitSet bitSet = new BitSet(blocksChunkHolder.getDataBlock().nodeSize());
+		byte[][] filterValues =dimColumnExecuterInfo.getFilterKeys();
 		if (null != filterValues && filterValues.length > 0) {
-			bitSet.set(0, blockDataHolder.getLeafDataBlock().getnKeys());
+			bitSet.set(0, blocksChunkHolder.getDataBlock().nodeSize());
 		}
 		return bitSet;
 	}
@@ -52,5 +55,15 @@ public class RestructureFilterExecuterImpl implements FilterExecuter {
 		BitSet bitSet = new BitSet(1);
 		bitSet.set(0);
 		return bitSet;
+	}
+	@Override
+	public FilterExecuter getLeft() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	@Override
+	public FilterExecuter getRight() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

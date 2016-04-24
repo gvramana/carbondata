@@ -18,11 +18,14 @@
  */
 package org.carbondata.query.filter.resolver;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import org.carbondata.core.constants.CarbonCommonConstants;
-import org.carbondata.query.evaluators.DimColumnEvaluatorInfo;
+import org.carbondata.core.carbon.AbsoluteTableIdentifier;
+import org.carbondata.core.carbon.datastore.IndexKey;
+import org.carbondata.core.carbon.datastore.block.AbstractIndex;
+import org.carbondata.core.keygenerator.KeyGenerator;
+import org.carbondata.query.carbonfilterinterface.FilterExecuterType;
+import org.carbondata.query.evaluators.DimColumnResolvedFilterInfo;
 import org.carbondata.query.expression.ColumnExpression;
 import org.carbondata.query.expression.DataType;
 import org.carbondata.query.expression.Expression;
@@ -31,10 +34,9 @@ import org.carbondata.query.expression.conditional.ConditionalExpression;
 import org.carbondata.query.filter.executer.FilterExecuter;
 import org.carbondata.query.filter.executer.RestructureFilterExecuterImpl;
 import org.carbondata.query.filters.measurefilter.util.FilterUtil;
-import org.carbondata.query.schema.metadata.FilterEvaluatorInfo;
 
 public class RestructureFilterResolverImpl implements FilterResolverIntf {
-	protected List<DimColumnEvaluatorInfo> dimColEvaluatorInfoList;
+	protected DimColumnResolvedFilterInfo dimColumnResolvedFilterInfo;
 
 	private Expression exp;
 
@@ -48,8 +50,7 @@ public class RestructureFilterResolverImpl implements FilterResolverIntf {
 
 	public RestructureFilterResolverImpl(Expression exp, String defaultValue, int surrogate,
             boolean isExpressionResolve, boolean isIncludeFilter) {
-		this.dimColEvaluatorInfoList = new ArrayList<DimColumnEvaluatorInfo>(
-				CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
+		dimColumnResolvedFilterInfo = new DimColumnResolvedFilterInfo();
 		this.exp = exp;
 		this.defaultValue = defaultValue;
 		this.surrogate = surrogate;
@@ -58,9 +59,9 @@ public class RestructureFilterResolverImpl implements FilterResolverIntf {
 	}
 
 	@Override
-	public void resolve(FilterEvaluatorInfo info) {
+	public void resolve(AbsoluteTableIdentifier absoluteTableIdentifier) {
 
-		DimColumnEvaluatorInfo dimColumnEvaluatorInfo = new DimColumnEvaluatorInfo();
+		DimColumnResolvedFilterInfo dimColumnResolvedFilterInfo = new DimColumnResolvedFilterInfo();
 		if (!this.isExpressionResolve
 				&& exp instanceof BinaryConditionalExpression) {
 			BinaryConditionalExpression binaryConditionalExpression = (BinaryConditionalExpression) exp;
@@ -81,13 +82,13 @@ public class RestructureFilterResolverImpl implements FilterResolverIntf {
 					if (FilterUtil.checkIfExpressionContainsColumn(right)) {
 						isExpressionResolve = true;
 					} else {
-						dimColumnEvaluatorInfo.setColumnIndex(columnExpression
+						dimColumnResolvedFilterInfo.setColumnIndex(columnExpression
 								.getDim().getOrdinal());
-						// dimColumnEvaluatorInfo
+						// dimColumnResolvedFilterInfo
 						// .setNeedCompressedData(info.getSlices().get(info.getCurrentSliceIndex())
 						// .getDataCache(info.getFactTableName()).getAggKeyBlock()[columnExpression.getDim()
 						// .getOrdinal()]);
-						dimColumnEvaluatorInfo.setFilterValues(FilterUtil
+						dimColumnResolvedFilterInfo.setFilterValues(FilterUtil
 								.getFilterListForRS(right, columnExpression,
 										defaultValue, surrogate));
 					}
@@ -108,13 +109,13 @@ public class RestructureFilterResolverImpl implements FilterResolverIntf {
 					if (checkIfExpressionContainsColumn(left)) {
 						isExpressionResolve = true;
 					} else {
-						dimColumnEvaluatorInfo.setColumnIndex(columnExpression
+						dimColumnResolvedFilterInfo.setColumnIndex(columnExpression
 								.getDim().getOrdinal());
-						// dimColumnEvaluatorInfo
+						// dimColumnResolvedFilterInfo
 						// .setNeedCompressedData(info.getSlices().get(info.getCurrentSliceIndex())
 						// .getDataCache(info.getFactTableName()).getAggKeyBlock()[columnExpression.getDim()
 						// .getOrdinal()]);
-						dimColumnEvaluatorInfo.setFilterValues(FilterUtil
+						dimColumnResolvedFilterInfo.setFilterValues(FilterUtil
 								.getFilterListForRS(left, columnExpression,
 										defaultValue, surrogate));
 					}
@@ -125,15 +126,14 @@ public class RestructureFilterResolverImpl implements FilterResolverIntf {
 			ConditionalExpression conditionalExpression = (ConditionalExpression) exp;
 			List<ColumnExpression> columnList = conditionalExpression
 					.getColumnList();
-			dimColumnEvaluatorInfo.setColumnIndex(columnList.get(0).getDim()
+			dimColumnResolvedFilterInfo.setColumnIndex(columnList.get(0).getDim()
 					.getOrdinal());
-			// dimColumnEvaluatorInfo.setNeedCompressedData(info.getSlices().get(info.getCurrentSliceIndex())
+			// dimColumnResolvedFilterInfo.setNeedCompressedData(info.getSlices().get(info.getCurrentSliceIndex())
 			// .getDataCache(info.getFactTableName()).getAggKeyBlock()[columnList.get(0).getDim().getOrdinal()]);
-			dimColumnEvaluatorInfo.setFilterValues(FilterUtil
+			dimColumnResolvedFilterInfo.setFilterValues(FilterUtil
 					.getFilterListForAllMembersRS(exp, columnList.get(0),
 							defaultValue, surrogate, isIncludeFilter));
 		}
-		dimColEvaluatorInfoList.add(dimColumnEvaluatorInfo);
 
 	}
 	
@@ -171,6 +171,30 @@ public class RestructureFilterResolverImpl implements FilterResolverIntf {
 	@Override
 	public FilterExecuter getFilterExecuterInstance() {
 		// TODO Auto-generated method stub
-		return new RestructureFilterExecuterImpl(dimColEvaluatorInfoList);
+		return new RestructureFilterExecuterImpl();
 	}
+
+	
+	public DimColumnResolvedFilterInfo getDimColResolvedFilterInfo() {
+		// TODO Auto-generated method stub
+		return dimColumnResolvedFilterInfo;
+	}
+
+	@Override
+	public IndexKey getstartKey(KeyGenerator keyGenerator) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public IndexKey getEndKey(AbstractIndex segmentIndexBuilder,
+			AbsoluteTableIdentifier tableIdentifier) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public FilterExecuterType getFilterExecuterType() {
+		return FilterExecuterType.RESTRUCTURE;
+		}
 }

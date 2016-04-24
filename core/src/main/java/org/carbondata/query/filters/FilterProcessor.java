@@ -20,11 +20,12 @@ package org.carbondata.query.filters;
  */
 import java.util.List;
 
+import org.carbondata.core.carbon.AbsoluteTableIdentifier;
 import org.carbondata.core.carbon.datastore.DataRefNode;
+import org.carbondata.core.carbon.datastore.block.AbstractIndex;
 import org.carbondata.core.carbon.datastore.impl.btree.BTreeNode;
 import org.carbondata.query.expression.Expression;
 import org.carbondata.query.filter.resolver.FilterResolverIntf;
-import org.carbondata.query.schema.metadata.FilterEvaluatorInfo;
 
 public interface FilterProcessor {
 
@@ -34,22 +35,24 @@ public interface FilterProcessor {
 	 * 
 	 * @param expressionTree
 	 *            , filter expression tree
-	 * @param info
-	 *            ,certain metadata required for resolving filter.
+	 * @param tableIdentifier
+	 *            ,contains carbon store informations.
 	 * @return
 	 */
 	FilterResolverIntf getFilterResolver(Expression expressionTree,
-			FilterEvaluatorInfo info);
+			AbsoluteTableIdentifier tableIdentifier);
 
 	/**
-	 * This API is exposed inorder to get the required blocks based on the
-	 * filter.
+	 * This API is exposed inorder to get the required block reference node
+	 * based on the filter.The list will be send to the executer tasks inorder
+	 * to apply filters with respect to the shortlisted data reference node.
 	 * 
 	 * @param filterResolver
 	 *            DataBlock list with resolved filters
-	 * @return
+	 * @return list of DataRefNode.
 	 */
 	List<DataRefNode> getFilterredBlocks(List<BTreeNode> listOfTree,
-			FilterResolverIntf filterResolver, FilterEvaluatorInfo filterInfo);
+			FilterResolverIntf filterResolver, AbstractIndex segmentIndexBuilder,
+			AbsoluteTableIdentifier tableIdentifier);
 
 }

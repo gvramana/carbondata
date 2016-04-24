@@ -18,36 +18,36 @@
  */
 package org.carbondata.query.filter.resolver;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import org.carbondata.core.constants.CarbonCommonConstants;
+import org.carbondata.core.carbon.AbsoluteTableIdentifier;
 import org.carbondata.core.metadata.CarbonMetadata.Measure;
-import org.carbondata.query.evaluators.DimColumnEvaluatorInfo;
+import org.carbondata.query.carbonfilterinterface.FilterExecuterType;
+import org.carbondata.query.evaluators.DimColumnResolvedFilterInfo;
 import org.carbondata.query.evaluators.MsrColumnEvalutorInfo;
 import org.carbondata.query.expression.ColumnExpression;
 import org.carbondata.query.expression.Expression;
 import org.carbondata.query.expression.conditional.ConditionalExpression;
 import org.carbondata.query.filter.executer.FilterExecuter;
 import org.carbondata.query.filter.executer.RowLevelFilterExecuterImpl;
-import org.carbondata.query.schema.metadata.FilterEvaluatorInfo;
-import org.carbondata.query.util.QueryExecutorUtility;
 
 public class RowLevelFilterResolverImpl extends ConditionalFilterResolverImpl {
 	
-	private ArrayList<DimColumnEvaluatorInfo> dimColEvaluatorInfoList;
-	private ArrayList<MsrColumnEvalutorInfo> msrColEvalutorInfoList;
+	private List<DimColumnResolvedFilterInfo> dimColEvaluatorInfoList;
+	private List<MsrColumnEvalutorInfo> msrColEvalutorInfoList;
     protected Expression exp;
     protected boolean isExpressionResolve;
     protected boolean isIncludeFilter;
+	private AbsoluteTableIdentifier tableIdentifier;
     public RowLevelFilterResolverImpl(Expression exp, boolean isExpressionResolve,
-            boolean isIncludeFilter) {
+            boolean isIncludeFilter, AbsoluteTableIdentifier tableIdentifier) {
     	super(exp, isExpressionResolve, isIncludeFilter);
+    	this.tableIdentifier=tableIdentifier;
     }
 
     @Override
-    public void resolve(FilterEvaluatorInfo info) {
-        DimColumnEvaluatorInfo dimColumnEvaluatorInfo = null;
+    public void resolve(AbsoluteTableIdentifier absoluteTableIdentifier) {
+        DimColumnResolvedFilterInfo dimColumnEvaluatorInfo = null;
         MsrColumnEvalutorInfo msrColumnEvalutorInfo = null;
         int index = 0;
         if (exp instanceof ConditionalExpression) {
@@ -55,58 +55,25 @@ public class RowLevelFilterResolverImpl extends ConditionalFilterResolverImpl {
             List<ColumnExpression> columnList = conditionalExpression.getColumnList();
             for (ColumnExpression columnExpression : columnList) {
                 if (columnExpression.isDimension()) {
-                    dimColumnEvaluatorInfo = new DimColumnEvaluatorInfo();
+                    dimColumnEvaluatorInfo = new DimColumnResolvedFilterInfo();
                     dimColumnEvaluatorInfo.setRowIndex(index++);
-                    dimColumnEvaluatorInfo.setSlices(info.getSlices());
-					dimColumnEvaluatorInfo.setColumnIndex(info
-							.getTableSegment()
-							.getSegmentProperties()
-							.getDimensionOrdinalToBlockMapping()
-							.get(columnExpression.getDimension()
-									.getOrdinal()));
-                    dimColumnEvaluatorInfo.setCurrentSliceIndex(info.getCurrentSliceIndex());
                     dimColumnEvaluatorInfo.setDimension(columnExpression.getDimension());
-                    dimColumnEvaluatorInfo.setComplexTypesWithBlockStartIndex(
-                            info.getComplexTypesWithBlockStartIndex());
-                    dimColumnEvaluatorInfo.setDimensions(info.getDimensions());
-                    int newDimensionIndex = QueryExecutorUtility
-                            .isNewDimension(info.getNewDimension(), columnExpression.getDim());
-                    if (newDimensionIndex > -1) {
                         dimColumnEvaluatorInfo.setDimensionExistsInCurrentSilce(false);
-                        dimColumnEvaluatorInfo.setRsSurrogates(
-                                info.getNewDimensionSurrogates()[newDimensionIndex]);
-                        dimColumnEvaluatorInfo.setDefaultValue(
-                                info.getNewDimensionDefaultValue()[newDimensionIndex]
-                                        .equals(CarbonCommonConstants.MEMBER_DEFAULT_VAL) ?
-                                        null :
-                                        info.getNewDimensionDefaultValue()[newDimensionIndex]);
-                    }
-
                     dimColEvaluatorInfoList.add(dimColumnEvaluatorInfo);
-                } else {
-                    msrColumnEvalutorInfo = new MsrColumnEvalutorInfo();
-                    msrColumnEvalutorInfo.setRowIndex(index++);
-                    msrColumnEvalutorInfo
-                            .setAggregator(((Measure) columnExpression.getDim()).getAggName());
-                    int measureIndex = QueryExecutorUtility.isNewMeasure(info.getNewMeasures(),
-                            ((Measure) columnExpression.getDim()));
-                    // if measure is found then index returned will be > 0 .
-                    // else it will be -1 . here if the measure is a newly added
-                    // measure then index will be >0.
-                    if (measureIndex < 0) {
+				} else {
+					msrColumnEvalutorInfo = new MsrColumnEvalutorInfo();
+					msrColumnEvalutorInfo.setRowIndex(index++);
+					msrColumnEvalutorInfo
+							.setAggregator(((Measure) columnExpression.getDim())
+									.getAggName());
+					// if measure is found then index returned will be > 0 .
+					// else it will be -1 . here if the measure is a newly added
+					// measure then index will be >0.
 
-                        msrColumnEvalutorInfo.setType(
-                                info.getSlices().get(info.getCurrentSliceIndex())
-                                        .getDataCache(info.getFactTableName())
-                                        .getType()[((Measure) columnExpression.getDim())
-                                        .getOrdinal()]);
-                    } else {
-                        msrColumnEvalutorInfo.setMeasureExistsInCurrentSlice(false);
-                        msrColumnEvalutorInfo
-                                .setDefaultValue(info.getNewDefaultValues()[measureIndex]);
-                    }
-                    msrColEvalutorInfoList.add(msrColumnEvalutorInfo);
-                }
+					msrColumnEvalutorInfo.setMeasureExistsInCurrentSlice(false);
+					msrColumnEvalutorInfo.setDataType(columnExpression.getDataType());
+					msrColEvalutorInfoList.add(msrColumnEvalutorInfo);
+				}
             }
         }
     }
@@ -114,6 +81,11 @@ public class RowLevelFilterResolverImpl extends ConditionalFilterResolverImpl {
     @Override
 	public FilterExecuter getFilterExecuterInstance() {
 		// TODO Auto-generated method stub
-		return new RowLevelFilterExecuterImpl(dimColEvaluatorInfoList,msrColEvalutorInfoList,exp);
+		return new RowLevelFilterExecuterImpl(dimColEvaluatorInfoList,msrColEvalutorInfoList,exp,tableIdentifier);
+	}
+
+	@Override
+	public FilterExecuterType getFilterExecuterType() {
+		return FilterExecuterType.ROWLEVEL;
 	}
 }
