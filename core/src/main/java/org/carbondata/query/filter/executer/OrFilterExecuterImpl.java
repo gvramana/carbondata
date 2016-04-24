@@ -20,14 +20,17 @@ package org.carbondata.query.filter.executer;
 
 import java.util.BitSet;
 
-import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
-import org.carbondata.query.filter.resolver.FilterResolverIntf;
+import org.carbondata.query.carbon.processor.BlocksChunkHolder;
 
 public class OrFilterExecuterImpl implements FilterExecuter {
 
 	private FilterExecuter leftExecuter;
 	private FilterExecuter rightExecuter;
 
+	public OrFilterExecuterImpl()
+	{
+		
+	}
 	public OrFilterExecuterImpl(FilterExecuter leftExecuter,
 			FilterExecuter rightExecuter) {
 		this.leftExecuter = leftExecuter;

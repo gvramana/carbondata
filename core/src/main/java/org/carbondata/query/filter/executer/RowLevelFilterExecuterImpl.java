@@ -28,12 +28,12 @@ import org.carbondata.core.cache.dictionary.Dictionary;
 import org.carbondata.core.carbon.AbsoluteTableIdentifier;
 import org.carbondata.core.carbon.SqlStatement;
 import org.carbondata.core.carbon.SqlStatement.Type;
-import org.carbondata.core.carbon.datastore.chunk.DimensionColumnDataChunk;
+import org.carbondata.core.carbon.datastore.chunk.impl.VariableLengthDimensionDataChunk;
 import org.carbondata.core.constants.CarbonCommonConstants;
 import org.carbondata.core.util.CarbonUtil;
 import org.carbondata.query.aggregator.MeasureAggregator;
 import org.carbondata.query.aggregator.util.AggUtil;
-import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
+import org.carbondata.query.carbon.processor.BlocksChunkHolder;
 import org.carbondata.query.carbonfilterinterface.RowImpl;
 import org.carbondata.query.carbonfilterinterface.RowIntf;
 import org.carbondata.query.complex.querytypes.GenericQueryType;
@@ -132,8 +132,11 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 					record[dimColumnEvaluatorInfo.getRowIndex()] = dimColumnEvaluatorInfo
 							.getDefaultValue();
 				}
-				if (dimColumnEvaluatorInfo.getDims().isNoDictionaryDim()) {
-					DimensionColumnDataChunk dimensionColumnDataChunk = blockChunkHolder
+				if (dimColumnEvaluatorInfo.getDims().isNoDictionaryDim() &&  blockChunkHolder
+						.getDimensionDataChunk()[dimColumnEvaluatorInfo
+						.getColumnIndex()] instanceof VariableLengthDimensionDataChunk) {
+					
+					VariableLengthDimensionDataChunk dimensionColumnDataChunk = (VariableLengthDimensionDataChunk) blockChunkHolder
 							.getDimensionDataChunk()[dimColumnEvaluatorInfo
 							.getColumnIndex()];
 					if (null != dimensionColumnDataChunk
@@ -276,7 +279,7 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 	 */
 	private String readMemberBasedOnNoDictionaryVal(
 			DimColumnResolvedFilterInfo dimColumnEvaluatorInfo,
-			DimensionColumnDataChunk dimensionColumnDataChunk, int index) {
+			VariableLengthDimensionDataChunk dimensionColumnDataChunk, int index) {
 		byte[] noDictionaryVals;
 		if (null != dimensionColumnDataChunk.getAttributes()
 				.getInvertedIndexesReverse()) {
@@ -298,17 +301,4 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
 		bitSet.set(0);
 		return bitSet;
 	}
-
-	@Override
-	public FilterExecuter getLeft() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public FilterExecuter getRight() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 }

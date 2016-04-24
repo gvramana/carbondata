@@ -20,7 +20,8 @@ package org.carbondata.query.filter.executer;
 
 import java.util.BitSet;
 
-import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
+import org.carbondata.query.carbon.processor.BlocksChunkHolder;
+
 
 public interface FilterExecuter {
 

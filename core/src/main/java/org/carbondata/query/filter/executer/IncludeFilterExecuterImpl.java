@@ -25,7 +25,7 @@ import org.carbondata.core.carbon.datastore.chunk.DimensionColumnDataChunk;
 import org.carbondata.core.keygenerator.KeyGenerator;
 import org.carbondata.core.util.ByteUtil;
 import org.carbondata.core.util.CarbonUtil;
-import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
+import org.carbondata.query.carbon.processor.BlocksChunkHolder;
 import org.carbondata.query.evaluators.DimColumnExecuterFilterInfo;
 import org.carbondata.query.evaluators.DimColumnResolvedFilterInfo;
 import org.carbondata.query.filters.measurefilter.util.FilterUtil;
@@ -220,18 +220,6 @@ public class IncludeFilterExecuterImpl implements FilterExecuter {
 			bitSet.set(0);
 		}
 		return bitSet;
-	}
-
-	@Override
-	public FilterExecuter getLeft() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public FilterExecuter getRight() {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 }

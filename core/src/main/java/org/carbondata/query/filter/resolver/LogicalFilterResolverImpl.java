@@ -61,9 +61,9 @@ public class LogicalFilterResolverImpl implements FilterResolverIntf {
 		// TODO Auto-generated method stub
 		switch (filterExpressionType) {
 		case OR:
-			new OrFilterExecuterImpl(leftEvalutor, rightEvalutor);
+			new OrFilterExecuterImpl();
 		case AND:
-			return new AndFilterExecuterImpl(leftEvalutor, rightEvalutor);
+			return new AndFilterExecuterImpl();
 
 		default:
 			return null;

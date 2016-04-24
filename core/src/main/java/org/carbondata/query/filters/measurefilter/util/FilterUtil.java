@@ -771,6 +771,12 @@ public final class FilterUtil {
 		return indexKey;
 	}
 
+	/**
+	 * API will create an filter executer tree based on the filter resolver
+	 * @param filterExpressionResolverTree
+	 * @param blockKeyGenerator
+	 * @return
+	 */
 	public static FilterExecuter getFilterExecuterTree(
 			FilterResolverIntf filterExpressionResolverTree,
 			KeyGenerator blockKeyGenerator) {
@@ -778,10 +784,20 @@ public final class FilterUtil {
 				filterExpressionResolverTree, blockKeyGenerator);		
 	}
 
+	/**
+	 * API will prepare the Keys from the surrogates of particular filter resolver
+	 * @param filterValues
+	 * @param blockKeyGenerator
+	 * @param dimension
+	 * @param dimColumnExecuterInfo
+	 */
 	public static void prepareKeysFromSurrogates(
 			DimColumnFilterInfo filterValues, KeyGenerator blockKeyGenerator,
-			CarbonDimension dimension, DimColumnExecuterFilterInfo dimColumnExecuterInfo) {
-		byte[][] keysBasedOnFilter=getKeyArray(filterValues, dimension, blockKeyGenerator);
-		dimColumnExecuterInfo=new DimColumnExecuterFilterInfo(keysBasedOnFilter);
+			CarbonDimension dimension,
+			DimColumnExecuterFilterInfo dimColumnExecuterInfo) {
+		byte[][] keysBasedOnFilter = getKeyArray(filterValues, dimension,
+				blockKeyGenerator);
+		dimColumnExecuterInfo = new DimColumnExecuterFilterInfo(
+				keysBasedOnFilter);
 	}
 }

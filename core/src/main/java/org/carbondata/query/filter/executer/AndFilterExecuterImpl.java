@@ -20,13 +20,17 @@ package org.carbondata.query.filter.executer;
 
 import java.util.BitSet;
 
-import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
+import org.carbondata.query.carbon.processor.BlocksChunkHolder;
 
 public class AndFilterExecuterImpl implements FilterExecuter {
 
 	private FilterExecuter leftExecuter;
 	private FilterExecuter rightExecuter;
 
+	public AndFilterExecuterImpl()
+	{
+		
+	}
 	public AndFilterExecuterImpl(FilterExecuter leftExecuter,
 			FilterExecuter rightExecuter) {
 		this.leftExecuter = leftExecuter;
@@ -64,17 +68,4 @@ public class AndFilterExecuterImpl implements FilterExecuter {
 		leftFilters.and(rightFilter);
 		return leftFilters;
 	}
-
-	@Override
-	public FilterExecuter getLeft() {
-		// TODO Auto-generated method stub
-		return leftExecuter;
-	}
-
-	@Override
-	public FilterExecuter getRight() {
-		// TODO Auto-generated method stub
-		return rightExecuter;
-	}
-
 }

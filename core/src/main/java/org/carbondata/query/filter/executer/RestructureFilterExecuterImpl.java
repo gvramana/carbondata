@@ -21,7 +21,7 @@ package org.carbondata.query.filter.executer;
 import java.util.BitSet;
 
 import org.carbondata.core.keygenerator.KeyGenerator;
-import org.carbondata.query.carbon.scanner.BlocksChunkHolder;
+import org.carbondata.query.carbon.processor.BlocksChunkHolder;
 import org.carbondata.query.evaluators.DimColumnExecuterFilterInfo;
 import org.carbondata.query.evaluators.DimColumnResolvedFilterInfo;
 import org.carbondata.query.filters.measurefilter.util.FilterUtil;
@@ -55,15 +55,5 @@ public class RestructureFilterExecuterImpl implements FilterExecuter {
 		BitSet bitSet = new BitSet(1);
 		bitSet.set(0);
 		return bitSet;
-	}
-	@Override
-	public FilterExecuter getLeft() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	@Override
-	public FilterExecuter getRight() {
-		// TODO Auto-generated method stub
-		return null;
 	}
 }
