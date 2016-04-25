@@ -23,4 +23,8 @@ public class CarbonInputSplit extends FileSplit implements Writable {
         return new CarbonInputSplit(segmentId, split.getPath(), split.getStart(),
                 split.getLength(), split.getLocations());
     }
+
+    public int getSegmentId() {
+        return segmentId;
+    }
 }

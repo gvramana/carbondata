@@ -93,7 +93,6 @@ public final class FilterUtil {
 	 *            , resolver tree which will hold the resolver tree based on
 	 *            filter expression.
 	 * 
-	 * @param info
 	 * @return FilterResolverIntf type.
 	 */
 	public static FilterResolverIntf getFilterResolver(
@@ -296,7 +295,6 @@ public final class FilterUtil {
 	 * This method will check if a given expression contains a column expression
 	 * recursively.
 	 *
-	 * @param right
 	 * @return
 	 */
 	public static boolean checkIfExpressionContainsColumn(Expression expression) {
@@ -327,7 +325,6 @@ public final class FilterUtil {
 	 * This method will return the ranges for the masked Bytes based on the key
 	 * Generator.
 	 *
-	 * @param queryDimensions
 	 * @param generator
 	 * @return
 	 */
@@ -417,7 +414,6 @@ public final class FilterUtil {
 	 * This API will get all the members of column from the forward dictionary
 	 * cache
 	 * 
-	 * @param info
 	 * @param expression
 	 * @param columnExpression
 	 * @param isIncludeFilter

@@ -88,7 +88,8 @@ public final class CarbonQueryParseUtil {
      * @param cubeName
      * @return
      * @throws IOException
-     */
+     *
+    @Deprecated
     public static CarbonQueryModel parseCarbonQuery(CarbonQuery carbonQuery, String schemaName,
             String cubeName) throws IOException {
 
@@ -160,7 +161,7 @@ public final class CarbonQueryParseUtil {
 
         return model;
     }
-
+*/
     /**
      * @param carbonTable
      * @param dims
@@ -209,7 +210,7 @@ public final class CarbonQueryParseUtil {
     /**
      * @param cube
      * @throws IOException
-     */
+     * /
     public static String getSuitableTable(Map<String, DimensionAggregatorInfo> dimAggregatorInfos,
             Schema schema, Cube cube, List<Dimension> dims, CarbonQueryExecutorModel executorModel,
             String storeLocation, int partitionCount) throws IOException {
@@ -336,7 +337,7 @@ public final class CarbonQueryParseUtil {
         }
         return false;
     }
-
+*/
     /**
      * @param schema
      * @param cube
@@ -345,7 +346,7 @@ public final class CarbonQueryParseUtil {
      * @param storeLocation
      * @param partitionCount
      * @return
-     */
+     * /
     private static String getMostSuitableAggregateTable(Schema schema, Cube cube,
             Map<String, Integer> tableMeasureCountMapping, List<String> aggtables,
             String storeLocation, int partitionCount) {
@@ -401,7 +402,7 @@ public final class CarbonQueryParseUtil {
         }
         return selectedTableName;
     }
-
+*/
     /**
      * @param baseStorePath
      * @return
@@ -608,7 +609,7 @@ public final class CarbonQueryParseUtil {
      * @param factTableName
      * @param model
      * @return List<String> list of errors
-     */
+     * /
     private static List<String> fillMeta(CarbonQueryImpl queryImpl, Cube cube, String factTableName,
             CarbonQueryModel model) {
 
@@ -734,103 +735,9 @@ public final class CarbonQueryParseUtil {
 
         return errors;
     }
-
-
-    /**
-     * @param cube
-     * @param factTableName
-     * @param msrs
-     * @param calMsrs
-     * @param msrFilterModels
-     * @param sortModel
-     * @param errors
-     * @param i
-     * @param holder
-     * @param b
-     * @return
-     */
-    private static MeasureSortModel processMeasure(Cube cube, String factTableName,
-            List<Measure> msrs, List<CalculatedMeasure> calMsrs,
-            Map<Measure, MeasureFilterModel[]> msrFilterModels,
-            Map<Measure, MeasureFilterModel[]> msrFilterModelsAfterTopN, MeasureSortModel sortModel,
-            List<String> errors, CarbonLevelHolder holder, AxisType axisType,
-            boolean isBreakHierarchy) {
-        CarbonMeasure measure = (CarbonMeasure) holder.getLevel();
-        Measure msr = null;
-        if (measure.getType().equals(CarbonLevelType.CALCULATED_MEASURE)) {
-            if (measure.getType().equals(CarbonLevelType.CALCULATED_MEASURE)) {
-                CarbonCalculatedMeasure mcm = (CarbonCalculatedMeasure) measure;
-                CalculatedMeasure cmsr = new CalculatedMeasure(null, measure.getName());
-                if (mcm.getGroupDimensionLevel() != null) {
-                    cmsr.setDistCountDim(cube.getDimensionByLevelName(
-                            mcm.getGroupDimensionLevel().getDimensionName(),
-                            mcm.getGroupDimensionLevel().getHierarchyName(),
-                            mcm.getGroupDimensionLevel().getName(), factTableName));
-                }
-                msr = cmsr;
-            }
-        } else {
-            msr = cube.getMeasure(factTableName, measure.getName());
-        }
-        if (null == msr) {
-            msr = getMsrFromFactTableIfCalculatedBaseMsr(cube, factTableName, measure);
-        }
-        if (msr == null) {
-            errors.add(measure.getName());
-        } else {
-            if (axisType == CarbonQuery.AxisType.COLUMN || axisType == CarbonQuery.AxisType.ROW) {
-                if (msr instanceof CalculatedMeasure) {
-                    calMsrs.add((CalculatedMeasure) msr);
-
-                } else {
-                    msrs.add(msr);
-                }
-
-                if (!holder.getSortType().equals(SortType.NONE)) {
-                    sortModel = new MeasureSortModel(msr, holder.getSortType().getSortValue());
-                    if (holder.getSortType().equals(SortType.BASC) || holder.getSortType()
-                            .equals(SortType.BDESC)) {
-                        sortModel.setBreakHeir(true);
-                    }
-                }
-            }
-        }
-
-        List<CarbonMeasureFilter> msrFilters = holder.getMsrFilters();
-        if (msrFilters != null && msrFilters.size() > 0) {
-            CarbonDimensionLevel dimensionLevel = measure.getDimensionLevel();
-            Dimension dimensionByLevelName = null;
-            if (dimensionLevel != null) {
-                dimensionByLevelName =
-                        cube.getDimensionByLevelName(dimensionLevel.getDimensionName(),
-                                dimensionLevel.getHierarchyName(), dimensionLevel.getName(),
-                                factTableName);
-            }
-            setMeasureFilterModels(msrFilters, dimensionByLevelName, msrFilterModels,
-                    msrFilterModelsAfterTopN, msr, isBreakHierarchy);
-        }
-        return sortModel;
-    }
-
-    private static Measure getMsrFromFactTableIfCalculatedBaseMsr(Cube cube, String factTableName,
-            CarbonMeasure measure) {
-        if (!cube.getFactTableName().equals(factTableName)) {
-            Measure msr = cube.getMeasure(cube.getFactTableName(), measure.getName());
-            return msr;
-        }
-        return null;
-    }
+*/
 
     /**
-     * @param cube
-     * @param factTableName
-     * @param queryDimsRows
-     * @param queryDimsCols
-     * @param constraints
-     * @param sortTypes
-     * @param errors
-     * @param holder
-     */
     private static void processDimension(Cube cube, String factTableName,
             List<CarbonMetadata.Dimension> queryDimsRows,
             List<CarbonMetadata.Dimension> queryDimsCols,
@@ -872,7 +779,7 @@ public final class CarbonQueryParseUtil {
         updateConstraints(constraints, constraintsAfterTopN, isAnalyzerQuery, dim, dimLevelFilter,
                 filetrWrapperConstMap);
     }
-
+*/
     private static int getSortByte(SortType sortType) {
         if (sortType == SortType.DESC) {
             return 1;
@@ -882,7 +789,7 @@ public final class CarbonQueryParseUtil {
             return -1;
         }
     }
-
+/*
     private static void updateConstraints(Map<Dimension, CarbonFilterInfo> constraints,
             Map<Dimension, CarbonFilterInfo> constraintsAfterTopN, boolean isAnalyzerQuery,
             Dimension dim, CarbonDimensionLevelFilter dimLevelFilter,
@@ -952,6 +859,91 @@ public final class CarbonQueryParseUtil {
             }
         }
     }
+*/
+  /**
+   * @param cube
+   * @param factTableName
+   * @param msrs
+   * @param calMsrs
+   * @param msrFilterModels
+   * @param sortModel
+   * @param errors
+   * @param i
+   * @param holder
+   * @param b
+   * @return
+   * /
+  private static MeasureSortModel processMeasure(Cube cube, String factTableName,
+  List<Measure> msrs, List<CalculatedMeasure> calMsrs,
+  Map<Measure, MeasureFilterModel[]> msrFilterModels,
+  Map<Measure, MeasureFilterModel[]> msrFilterModelsAfterTopN, MeasureSortModel sortModel,
+  List<String> errors, CarbonLevelHolder holder, AxisType axisType,
+  boolean isBreakHierarchy) {
+  CarbonMeasure measure = (CarbonMeasure) holder.getLevel();
+  Measure msr = null;
+  if (measure.getType().equals(CarbonLevelType.CALCULATED_MEASURE)) {
+  if (measure.getType().equals(CarbonLevelType.CALCULATED_MEASURE)) {
+  CarbonCalculatedMeasure mcm = (CarbonCalculatedMeasure) measure;
+  CalculatedMeasure cmsr = new CalculatedMeasure(null, measure.getName());
+  if (mcm.getGroupDimensionLevel() != null) {
+  cmsr.setDistCountDim(cube.getDimensionByLevelName(
+  mcm.getGroupDimensionLevel().getDimensionName(),
+  mcm.getGroupDimensionLevel().getHierarchyName(),
+  mcm.getGroupDimensionLevel().getName(), factTableName));
+  }
+  msr = cmsr;
+  }
+  } else {
+  msr = cube.getMeasure(factTableName, measure.getName());
+  }
+  if (null == msr) {
+  msr = getMsrFromFactTableIfCalculatedBaseMsr(cube, factTableName, measure);
+  }
+  if (msr == null) {
+  errors.add(measure.getName());
+  } else {
+  if (axisType == CarbonQuery.AxisType.COLUMN || axisType == CarbonQuery.AxisType.ROW) {
+  if (msr instanceof CalculatedMeasure) {
+  calMsrs.add((CalculatedMeasure) msr);
+
+  } else {
+  msrs.add(msr);
+  }
+
+  if (!holder.getSortType().equals(SortType.NONE)) {
+  sortModel = new MeasureSortModel(msr, holder.getSortType().getSortValue());
+  if (holder.getSortType().equals(SortType.BASC) || holder.getSortType()
+  .equals(SortType.BDESC)) {
+  sortModel.setBreakHeir(true);
+  }
+  }
+  }
+  }
+
+  List<CarbonMeasureFilter> msrFilters = holder.getMsrFilters();
+  if (msrFilters != null && msrFilters.size() > 0) {
+  CarbonDimensionLevel dimensionLevel = measure.getDimensionLevel();
+  Dimension dimensionByLevelName = null;
+  if (dimensionLevel != null) {
+  dimensionByLevelName =
+  cube.getDimensionByLevelName(dimensionLevel.getDimensionName(),
+  dimensionLevel.getHierarchyName(), dimensionLevel.getName(),
+  factTableName);
+  }
+  setMeasureFilterModels(msrFilters, dimensionByLevelName, msrFilterModels,
+  msrFilterModelsAfterTopN, msr, isBreakHierarchy);
+  }
+  return sortModel;
+  }
+
+  private static Measure getMsrFromFactTableIfCalculatedBaseMsr(Cube cube, String factTableName,
+      CarbonMeasure measure) {
+    if (!cube.getFactTableName().equals(factTableName)) {
+      Measure msr = cube.getMeasure(cube.getFactTableName(), measure.getName());
+      return msr;
+    }
+    return null;
+  }
 
     private static CarbonFilterInfo createFilterForTopNAfter(
             CarbonFilterInfo carbonFilterInfoCurrent) {
@@ -999,14 +991,10 @@ public final class CarbonQueryParseUtil {
         temp.addAllExcludedMembers(new ArrayList<String>(tempExcludedMembers));
         return temp;
     }
-
+*/
     /**
      * Convert CarbonMeasureFilter to the MeasureFilterModel objects.
-     *
-     * @param msrFilters
-     * @param isBreakHierarchy
-     * @return MeasureFilterModel[]
-     */
+     * /
     private static void setMeasureFilterModels(List<CarbonMeasureFilter> msrFilters,
             Dimension dimensionByLevelName, Map<Measure, MeasureFilterModel[]> msrFilterModels,
             Map<Measure, MeasureFilterModel[]> msrFilterModelsAfterTopN, Measure msr,
@@ -1035,7 +1023,7 @@ public final class CarbonQueryParseUtil {
         }
 
     }
-
+*/
     private static CarbonFilterInfo getCarbonFilterInfo(CarbonDimensionLevelFilter dimLevelFilter) {
 
         CarbonFilterInfo filterInfo;
@@ -1071,7 +1059,7 @@ public final class CarbonQueryParseUtil {
 
         return filterInfo;
     }
-
+/*
     private static TopNModel getTopNModel(TopCount topCount, Cube cube, List<Measure> msrs,
             List<Dimension> queryDimRows, List<Dimension> queryDimCols, String tableName,
             List<CalculatedMeasure> calcMsrs) {
@@ -1127,7 +1115,7 @@ public final class CarbonQueryParseUtil {
         model.setAxisType(axisType);
         return model;
     }
-
+*/
     /**
      * getTopNDimIndex
      *
@@ -1135,7 +1123,7 @@ public final class CarbonQueryParseUtil {
      * @param dim
      * @param dimIndex
      * @return
-     */
+     * /
     private static int getTopNDimIndex(List<Dimension> queryDimRows, Dimension dim) {
         int dimIndex = -1;
         int i = 0;
@@ -1174,7 +1162,7 @@ public final class CarbonQueryParseUtil {
         }
 
     }
-
+*/
     private static byte[] convertToArray(List<Integer> integers) {
         byte[] vals = new byte[integers.size()];
 

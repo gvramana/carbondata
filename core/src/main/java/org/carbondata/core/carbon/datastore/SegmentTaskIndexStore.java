@@ -205,8 +205,16 @@ public class SegmentTaskIndexStore {
     }
   }
 
-  public Map<String,AbstractIndex> getSegmentBTreeIfExists(AbsoluteTableIdentifier absoluteTableIdentifier,
-          int segmentId) {
-    return null;
+  /**
+   * check if Segment Btree is already loaded
+   */
+  public Map<String, AbstractIndex> getSegmentBTreeIfExists(
+      AbsoluteTableIdentifier absoluteTableIdentifier, int segmentId) {
+    Map<Integer, Map<String, AbstractIndex>> tableSegmentMapTemp =
+        tableSegmentMap.get(absoluteTableIdentifier);
+    if (null == tableSegmentMapTemp) {
+      return null;
+    }
+    return tableSegmentMapTemp.get(segmentId);
   }
 }

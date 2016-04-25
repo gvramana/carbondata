@@ -30,7 +30,6 @@ import org.apache.spark.sql.cubemodel.Partitioner;
 import org.carbondata.common.logging.LogService;
 import org.carbondata.common.logging.LogServiceFactory;
 import org.carbondata.core.carbon.AbsoluteTableIdentifier;
-import org.carbondata.core.carbon.CarbonDef.CubeDimension;
 import org.carbondata.core.carbon.CarbonDef.Schema;
 import org.carbondata.core.carbon.CarbonDef.Table;
 import org.carbondata.core.carbon.CarbonTableIdentifier;
@@ -63,11 +62,11 @@ import org.carbondata.integration.spark.query.metadata.CarbonPlanMeasure;
 import org.carbondata.integration.spark.splits.TableSplit;
 import org.carbondata.processing.util.CarbonSchemaParser;
 import org.carbondata.query.aggregator.CustomCarbonAggregateExpression;
+import org.carbondata.query.carbon.model.DimensionAggregatorInfo;
 import org.carbondata.query.carbon.model.QueryModel;
 import org.carbondata.query.datastorage.InMemoryTableStore;
 import org.carbondata.query.directinterface.impl.CarbonQueryParseUtil;
 import org.carbondata.query.executer.CarbonQueryExecutorModel;
-import org.carbondata.query.executer.QueryExecutor;
 import org.carbondata.query.expression.ColumnExpression;
 import org.carbondata.query.expression.Expression;
 import org.carbondata.query.expression.conditional.ConditionalExpression;
@@ -429,7 +428,8 @@ public final class CarbonQueryUtil {
         col.setDimension(true);
         if (null == dim) {
             msr = getCarbonMetadataMeasure(columnName, measures);
-            col.setDimension(msr);
+            // TODO: measure set as setColumn needs to be handled
+            //col.setDimension(msr);
             col.setDimension(false);
         }
     }
@@ -507,12 +507,12 @@ public final class CarbonQueryUtil {
      * unique name.But user needs to give one unique name for each level,that level he needs to
      * mention in query.
      */
-    public static CarbonPlanDimension getCarbonDimension(List<Dimension> dimensions, String carbonDim) {
-        for (Dimension dimension : dimensions) {
+    public static CarbonPlanDimension getCarbonDimension(List<CarbonDimension> dimensions, String carbonDim) {
+        for (CarbonDimension dimension : dimensions) {
             //Its just a temp work around to use level name as unique name. we need to provide a way
             // to configure unique name
             //to user in schema.
-            if (dimension.getName().equalsIgnoreCase(carbonDim)) {
+            if (dimension.getColName().equalsIgnoreCase(carbonDim)) {
                 return new CarbonPlanDimension(carbonDim);
             }
         }
@@ -600,7 +600,7 @@ public final class CarbonQueryUtil {
         return null;
     }
 
-    public static CarbonPlanMeasure getCarbonMeasure(String name, List<Measure> measures) {
+    public static CarbonPlanMeasure getCarbonMeasure(String name, List<CarbonMeasure> measures) {
 
         //dcd fix
         //String aggName = null;
@@ -615,8 +615,8 @@ public final class CarbonQueryUtil {
         if (msrName.equals("*")) {
             return new CarbonPlanMeasure(name);
         }
-        for (Measure measure : measures) {
-            if (measure.getName().equalsIgnoreCase(msrName)) {
+        for (CarbonMeasure measure : measures) {
+            if (measure.getColName().equalsIgnoreCase(msrName)) {
                 return new CarbonPlanMeasure(name);
             }
         }
@@ -854,7 +854,7 @@ public final class CarbonQueryUtil {
     public static boolean isQuickFilter(QueryModel queryModel) {
         return ("true".equals(CarbonProperties.getInstance()
                 .getProperty(CarbonCommonConstants.CARBON_ENABLE_QUICK_FILTER))
-                && null == queryModel.getFilterEvaluatorTree()
+                && null == queryModel.getFilterExpressionResolverTree()
                 && queryModel.getQueryDimension().size() == 1 && queryModel.getQueryMeasures().size() == 0
                 && queryModel.getDimAggregationInfo().size() == 0
                 && queryModel.getExpressions().size() == 0 && !queryModel
@@ -871,18 +871,10 @@ public final class CarbonQueryUtil {
         return metaTableColumns.toArray(new String[metaTableColumns.size()]);
     }
 
-    public static QueryExecutor getQueryExecuter() {
-        //QueryExecutor executer =
-        //        new QueryExecutorImpl(cube.getDimensions(factTable), cube.getSchemaName(),
-        //                cube.getOnlyCubeName(), queryScopeObject);
-        //return executer;
-        return null;
-    }
-
     /**
      * This method will return the name of the all the columns reference in the
      * query
-     */
+     * /
     public static Set<String> getColumnList(CarbonQueryExecutorModel queryModel,
             String cubeUniqueName) {
         Set<String> queryColumns =
@@ -918,6 +910,7 @@ public final class CarbonQueryUtil {
                 dimensions);
         return queryColumns;
     }
+    * /
 
     private static void addCustomExpressionColumnsToColumnList(
             List<CustomCarbonAggregateExpression> expressions, Set<String> queryColumns,
@@ -933,7 +926,7 @@ public final class CarbonQueryUtil {
             }
         }
     }
-
+    */
     /**
      * This method will traverse and populate the column list
      */
