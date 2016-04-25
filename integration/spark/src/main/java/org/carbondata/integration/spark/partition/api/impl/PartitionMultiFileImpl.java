@@ -45,11 +45,6 @@ public class PartitionMultiFileImpl implements Partition {
     return null;
   }
 
-  @Override public Map<String, CarbonDimensionLevelFilter> getPartitionDetails() {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
   @Override public List<String> getFilesPath() {
     // TODO Auto-generated method stub
     return folderPath;

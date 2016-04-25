@@ -21,14 +21,15 @@ import java.util.ArrayList
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.execution.LeafNode
+import org.apache.spark.sql.hive.CarbonMetastoreCatalog
 import org.apache.spark.unsafe.types.UTF8String
-
+import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonTableIdentifier}
+import org.carbondata.core.carbon.metadata.schema.table.column.{CarbonDimension, CarbonMeasure}
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.integration.spark.{KeyVal, KeyValImpl}
@@ -37,13 +38,11 @@ import org.carbondata.integration.spark.query.CarbonQueryPlan
 import org.carbondata.integration.spark.query.metadata.{CarbonPlanDimension, CarbonPlanMeasure, SortOrderType}
 import org.carbondata.integration.spark.rdd.CarbonDataRDD
 import org.carbondata.integration.spark.util.{CarbonQueryUtil, CarbonScalaUtil}
-import org.carbondata.query.executer.CarbonQueryExecutorModel
 import org.carbondata.query.expression.{ColumnExpression => CarbonColumnExpression, Expression => CarbonExpression, LiteralExpression => CarbonLiteralExpression}
 import org.carbondata.query.expression.ColumnExpression
 import org.carbondata.query.expression.arithmetic.{AddExpression, DivideExpression, MultiplyExpression, SubstractExpression}
 import org.carbondata.query.expression.conditional.{EqualToExpression, NotEqualsExpression, _}
 import org.carbondata.query.expression.logical.{AndExpression, OrExpression}
-import org.carbondata.query.querystats.{QueryDetail, QueryStatsCollector}
 import org.carbondata.query.scanner.impl.{CarbonKey, CarbonValue}
 
 
@@ -60,8 +59,8 @@ case class CarbonCubeScan(
 
   val cubeName = relation.cubeName
   val carbonTable = relation.metaData.carbonTable
-  val selectedDims = scala.collection.mutable.MutableList[CarbonDimension]()
-  val selectedMsrs = scala.collection.mutable.MutableList[CarbonMeasure]()
+  val selectedDims = scala.collection.mutable.MutableList[CarbonPlanDimension]()
+  val selectedMsrs = scala.collection.mutable.MutableList[CarbonPlanMeasure]()
   var outputColumns = scala.collection.mutable.MutableList[Attribute]()
   var extraPreds: Seq[Expression] = Nil
   val allDims = new scala.collection.mutable.HashSet[String]()
@@ -478,7 +477,6 @@ case class CarbonCubeScan(
     val kv: KeyVal[CarbonKey, CarbonValue] = new KeyValImpl()
     // setting queryid
     buildCarbonPlan.setQueryId(oc.getConf("queryId", System.nanoTime() + ""))
-    // handleQueryStats(model)
     // CarbonQueryUtil.updateCarbonExecuterModelWithLoadMetadata(model)
     // CarbonQueryUtil.setPartitionColumn(model, relation.cubeMeta.partitioner.partitionColumn)
     println("Selected Table to Query ****** "
@@ -497,47 +495,6 @@ case class CarbonCubeScan(
         schemaLastUpdatedTime,
         carbonCatalog.storePath)
     big
-  }
-
-
-  /**
-   * Adding few parameter like accumulator: to get details
-   * from executor and queryid to track the query at executor
-   */
-  def handleQueryStats(model: CarbonQueryExecutorModel) {
-    val queryStats: QueryDetail = QueryStatsCollector.getInstance
-      .getQueryStats(buildCarbonPlan.getQueryId)
-
-    // registering accumulator
-    val queryStatsCollector = QueryStatsCollector.getInstance
-    val partAcc = oc.sparkContext
-      .accumulator(queryStatsCollector.getInitialPartitionAccumulatorValue)(
-        queryStatsCollector.getPartitionAccumulatorParam)
-    model.setPartitionAccumulator(partAcc)
-    // querystats will be there only when user do <dataframe>.collect
-    // TODO need to check for all queries
-    if (null != queryStats) {
-      val metaPath: String = relation.metaData.cube.getMetaDataFilepath
-      queryStats.setMetaPath(metaPath)
-      queryStats.setCubeName(cubeName)
-      queryStats.setSchemaName(relation.schemaName)
-      queryStats.setGroupBy(isGroupByPresent)
-      queryStats.setFactTableName(carbonTable.getFactTableName)
-      queryStats.setDimOrdinals(CarbonQueryUtil
-        .getDimensionOrdinal(carbonTable.getDimensionByTableName(carbonTable.getFactTableName),
-          allDims.toArray))
-      // check if query has limit parameter
-      val limt: Int = buildCarbonPlan.getLimit
-      if (limt != -1) {
-        queryStats.setLimitPassed(true)
-      }
-      if (!dimensionPredicates.isEmpty) {
-        queryStats.setFilterQuery(true)
-      }
-      queryStats.setPartitionsDetail(partAcc)
-    }
-
-
   }
 
   def doExecute(): RDD[InternalRow] = {
