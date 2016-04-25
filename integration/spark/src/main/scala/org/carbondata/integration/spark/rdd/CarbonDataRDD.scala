@@ -29,22 +29,21 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapred.JobConf
 import org.apache.hadoop.mapreduce.Job
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
-import org.apache.log4j.filter.ExpressionFilter
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{Logging, Partition, SerializableWritable, SparkContext, TaskContext}
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.carbon.datastore.block.TableBlockInfo
-import org.carbondata.core.iterator.CarbonIterator
 import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonDef, CarbonTableIdentifier}
+import org.carbondata.core.iterator.CarbonIterator
 import org.carbondata.hadoop.{CarbonInputFormat, CarbonInputSplit}
 import org.carbondata.integration.spark.KeyVal
 import org.carbondata.integration.spark.splits.TableSplit
 import org.carbondata.integration.spark.util.{CarbonQueryUtil, CarbonSparkInterFaceLogEvent}
 import org.carbondata.lcm.status.SegmentStatusManager
+import org.carbondata.query.carbon.executor.QueryExecutorFactory
 import org.carbondata.query.carbon.model.QueryModel
-import org.carbondata.query.expression.conditional.EqualToExpression
-import org.carbondata.query.expression.{ColumnExpression, DataType, Expression, LiteralExpression}
-import org.carbondata.query.result.RowResult
+import org.carbondata.query.carbon.result.RowResult
+import org.carbondata.query.expression.Expression
 
 import scala.collection.JavaConversions._
 
@@ -79,7 +78,7 @@ class CarbonDataRDD[K, V](
   }
 
   override def getPartitions: Array[Partition] = {
-    val carbonInputFormat: CarbonInputFormat = new CarbonInputFormat();
+    val carbonInputFormat = new CarbonInputFormat[RowResult]();
     val jobConf: JobConf = new JobConf(new Configuration)
     val job: Job = new Job(jobConf)
     val absoluteTableIdentifier: AbsoluteTableIdentifier = queryModel.getAbsoluteTableIdentifier()
@@ -92,7 +91,7 @@ class CarbonDataRDD[K, V](
 
     // set filter resolver tree
     val filterResolver = carbonInputFormat.getResolvedFilter(job, filterExpression)
-    queryModel.setFilterEvaluatorTree(filterResolver)
+    queryModel.setFilterExpressionResolverTree(filterResolver)
     // get splits
     val splits = carbonInputFormat.getSplits(job, filterResolver)
     val carbonInputSplits = splits.map(_.asInstanceOf[CarbonInputSplit])
@@ -115,25 +114,22 @@ class CarbonDataRDD[K, V](
         val carbonSparkPartition = thepartition.asInstanceOf[CarbonSparkPartition]
         val carbonInputSplit = carbonSparkPartition.carbonInputSplit
 
-        val tableBlockInfos = new util.ArrayList[TableBlockInfo]();
-        tableBlockInfos.add(new TableBlockInfo(carbonInputSplit.getPath,carbonInputSplit.getStart,carbonInputSplit.))
-        queryModel.setTableBlockInfos(tableBlockInfos)
+        //fill table block info
+        val tableBlockInfoList = new util.ArrayList[TableBlockInfo]();
+        tableBlockInfoList.add(new TableBlockInfo(carbonInputSplit.getPath.getName,
+          carbonInputSplit.getStart,
+          carbonInputSplit.getSegmentId))
+        queryModel.setTableBlockInfos(tableBlockInfoList)
         queryStartTime = System.currentTimeMillis
-
-        //fill
 
           val carbonPropertiesFilePath = System.getProperty("carbon.properties.filepath", null)
           logInfo("*************************" + carbonPropertiesFilePath)
           if (null == carbonPropertiesFilePath) {
             System.setProperty("carbon.properties.filepath", System.getProperty("user.dir") + '/' + "conf" + '/' + "carbon.properties");
           }
-
-
-        if (CarbonQueryUtil.isQuickFilter(queryModel)) {
-          rowIterator = CarbonQueryUtil.getQueryExecuter().executeDimension(queryModel);
-        } else {
-          rowIterator = CarbonQueryUtil.getQueryExecuter().execute(queryModel);
-        }
+        // execute query
+        QueryExecutorFactory.getQueryExecutor(queryModel).execute(queryModel)
+        // TODO: CarbonQueryUtil.isQuickFilter quick filter from dictionary needs to support
       } catch {
         case e: Exception =>
           LOGGER.error(CarbonSparkInterFaceLogEvent.UNIBI_CARBON_SPARK_INTERFACE_MSG, e)
@@ -171,7 +167,7 @@ class CarbonDataRDD[K, V](
         keyClass.getKey(key, value)
       }
 
-      loginfo("*************************** Total Time Taken to execute the query in Carbon Side: " +
+      logInfo("*************************** Total Time Taken to execute the query in Carbon Side: " +
         (System.currentTimeMillis - queryStartTime))
     }
     iter
