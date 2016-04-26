@@ -47,6 +47,7 @@ import org.carbondata.query.carbon.result.RowResult
 import org.carbondata.query.expression.Expression
 
 
+
 class CarbonSparkPartition(rddId: Int, val idx: Int,
   @transient val carbonInputSplit: CarbonInputSplit)
   extends Partition {
@@ -60,7 +61,7 @@ class CarbonSparkPartition(rddId: Int, val idx: Int,
   /**
   * This RDD is used to perform query.
   */
-class CarbonDataRDD[K, V](
+class CarbonQueryRDD[K, V](
   sc: SparkContext,
   queryModel: QueryModel,
   filterExpression: Expression,
@@ -90,11 +91,18 @@ class CarbonDataRDD[K, V](
       validSegments.listOfValidSegments.asScala.map(x => new Integer(Integer.parseInt(x)))
     CarbonInputFormat.setSegmentsToAccess(job, validSegmentNos.asJava)
 
-    // set filter resolver tree
-    val filterResolver = carbonInputFormat.getResolvedFilter(job, filterExpression)
-    queryModel.setFilterExpressionResolverTree(filterResolver)
-    // get splits
-    val splits = carbonInputFormat.getSplits(job, filterResolver)
+    val splits =
+      if (filterExpression != null) {
+        // set filter resolver tree
+        val filterResolver = carbonInputFormat.getResolvedFilter(job, filterExpression)
+        queryModel.setFilterExpressionResolverTree(filterResolver)
+        // get splits considering filter
+        carbonInputFormat.getSplits(job, filterResolver)
+      } else {
+        // get splits
+        carbonInputFormat.getSplits(job)
+      }
+
     val carbonInputSplits = splits.asScala.map(_.asInstanceOf[CarbonInputSplit])
 
     val result = new Array[Partition](splits.size)

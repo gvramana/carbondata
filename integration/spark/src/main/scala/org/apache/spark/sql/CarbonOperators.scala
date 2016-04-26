@@ -37,7 +37,7 @@ import org.carbondata.integration.spark.{KeyVal, KeyValImpl}
 import org.carbondata.integration.spark.agg._
 import org.carbondata.integration.spark.query.CarbonQueryPlan
 import org.carbondata.integration.spark.query.metadata.{CarbonPlanDimension, CarbonPlanMeasure, SortOrderType}
-import org.carbondata.integration.spark.rdd.CarbonDataRDD
+import org.carbondata.integration.spark.rdd.CarbonQueryRDD
 import org.carbondata.integration.spark.util.{CarbonQueryUtil, CarbonScalaUtil}
 import org.carbondata.query.expression.{ColumnExpression => CarbonColumnExpression}
 import org.carbondata.query.expression.{Expression => CarbonExpression}
@@ -456,7 +456,7 @@ case class CarbonCubeScan(
     extraPreds = Seq(cond)
   }
 
-  def inputRdd: CarbonDataRDD[CarbonKey, CarbonValue] = {
+  def inputRdd: CarbonQueryRDD[CarbonKey, CarbonValue] = {
     // Update the FilterExpressions with extra conditions added through join pushdown
     if (!extraPreds.isEmpty) {
       val exps = preProcessExpressions(extraPreds.toSeq)
@@ -490,7 +490,7 @@ case class CarbonCubeScan(
     val cubeCreationTime = carbonCatalog.getCubeCreationTime(relation.schemaName, cubeName)
     val schemaLastUpdatedTime =
       carbonCatalog.getSchemaLastUpdatedTime(relation.schemaName, cubeName)
-    val big = new CarbonDataRDD(
+    val big = new CarbonQueryRDD(
         oc.sparkContext,
         model,
         buildCarbonPlan.getFilterExpression,
