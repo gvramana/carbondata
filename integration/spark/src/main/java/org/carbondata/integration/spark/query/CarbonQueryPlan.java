@@ -31,11 +31,11 @@ import java.util.List;
 import java.util.Map;
 
 import org.carbondata.core.constants.CarbonCommonConstants;
-import org.carbondata.integration.spark.query.metadata.CarbonPlanDimension;
 import org.carbondata.integration.spark.query.metadata.CarbonDimensionFilter;
 import org.carbondata.integration.spark.query.metadata.CarbonLikeFilter;
-import org.carbondata.integration.spark.query.metadata.CarbonPlanMeasure;
 import org.carbondata.integration.spark.query.metadata.CarbonMeasureFilter;
+import org.carbondata.integration.spark.query.metadata.CarbonPlanDimension;
+import org.carbondata.integration.spark.query.metadata.CarbonPlanMeasure;
 import org.carbondata.integration.spark.query.metadata.CarbonQueryExpression;
 import org.carbondata.integration.spark.query.metadata.TopOrBottomFilter;
 import org.carbondata.query.carbon.model.DimensionAggregatorInfo;
@@ -303,7 +303,8 @@ public class CarbonQueryPlan implements Serializable {
     return dimensionLikeFilters;
   }
 
-  public void setDimensionLikeFilters(CarbonPlanDimension dimension, List<CarbonLikeFilter> dimFilter) {
+  public void setDimensionLikeFilters(CarbonPlanDimension dimension,
+      List<CarbonLikeFilter> dimFilter) {
     dimensionLikeFilters.put(dimension, dimFilter);
   }
 
@@ -312,12 +313,12 @@ public class CarbonQueryPlan implements Serializable {
     if (null == dimensionAggregatorInfo) {
       dimensionAggregatorInfo = new DimensionAggregatorInfo();
       dimensionAggregatorInfo.setColumnName(columnName);
-      dimensionAggregatorInfo.setOrderList(Arrays.asList(new Integer []{queryOrder}));
-      dimensionAggregatorInfo.setAggList(Arrays.asList(new String[]{aggType}));
+      dimensionAggregatorInfo.setOrderList(Arrays.asList(new Integer[] { queryOrder }));
+      dimensionAggregatorInfo.setAggList(Arrays.asList(new String[] { aggType }));
       dimAggregatorInfos.put(columnName, dimensionAggregatorInfo);
     } else {
-      dimensionAggregatorInfo.setOrderList(Arrays.asList(new Integer []{queryOrder}));
-      dimensionAggregatorInfo.setAggList(Arrays.asList(new String[]{aggType}));
+      dimensionAggregatorInfo.setOrderList(Arrays.asList(new Integer[] { queryOrder }));
+      dimensionAggregatorInfo.setAggList(Arrays.asList(new String[] { aggType }));
     }
   }
 

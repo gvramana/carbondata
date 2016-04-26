@@ -26,7 +26,6 @@ import org.carbondata.query.columnar.aggregator.ColumnarScannedResultAggregator;
 import org.carbondata.query.columnar.datastoreblockprocessor.DataStoreBlockProcessor;
 import org.carbondata.query.columnar.scanner.impl.BtreeLeafNodeIterator;
 import org.carbondata.query.datastorage.storeinterface.DataStoreBlock;
-import org.carbondata.query.datastorage.tree.CSBTreeColumnarLeafNode;
 import org.carbondata.query.evaluators.BlockDataHolder;
 import org.carbondata.query.executer.impl.RestructureHolder;
 import org.carbondata.query.executer.processor.ScannedResultProcessor;

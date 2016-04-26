@@ -2061,14 +2061,15 @@ private[sql] case class PartitionData(databaseName: String, tableName: String, f
   var partitionStatus = CarbonCommonConstants.STORE_LOADSTATUS_SUCCESS
 
   def run(sqlContext: SQLContext): Seq[Row] = {
-    val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog
-      .lookupRelation1(Option(databaseName), tableName, None)(sqlContext).asInstanceOf[CarbonRelation]
+    val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog.lookupRelation1(
+      Option(databaseName), tableName, None)(sqlContext).asInstanceOf[CarbonRelation]
     val dimNames = relation.cubeMeta.carbonTable
       .getDimensionByTableName(tableName).asScala.map(_.getColName)
     val msrNames = relation.cubeMeta.carbonTable
       .getDimensionByTableName(tableName).asScala.map(_.getColName)
     val targetFolder = targetPath
-    partitionStatus = CarbonDataRDDFactory.partitionCarbonData(sqlContext.sparkContext, databaseName,
+    partitionStatus = CarbonDataRDDFactory.partitionCarbonData(
+      sqlContext.sparkContext, databaseName,
       tableName, factPath, targetFolder, (dimNames++msrNames).toArray
       , fileHeader, delimiter,
       quoteChar, escapeChar, multiLine, relation.cubeMeta.partitioner)

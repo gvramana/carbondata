@@ -38,8 +38,6 @@ import org.carbondata.query.holders.CarbonResultHolder;
 import org.carbondata.query.queryinterface.filter.CarbonFilterInfo;
 import org.carbondata.query.scope.QueryScopeObject;
 
-import org.apache.spark.Accumulator;
-
 /**
  * Its a model object for CarbonExecutor interface
  */

@@ -21,6 +21,7 @@ import java.util.ArrayList
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
@@ -28,8 +29,8 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.execution.LeafNode
 import org.apache.spark.sql.hive.CarbonMetastoreCatalog
 import org.apache.spark.unsafe.types.UTF8String
+
 import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonTableIdentifier}
-import org.carbondata.core.carbon.metadata.schema.table.column.{CarbonDimension, CarbonMeasure}
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.integration.spark.{KeyVal, KeyValImpl}
@@ -38,10 +39,11 @@ import org.carbondata.integration.spark.query.CarbonQueryPlan
 import org.carbondata.integration.spark.query.metadata.{CarbonPlanDimension, CarbonPlanMeasure, SortOrderType}
 import org.carbondata.integration.spark.rdd.CarbonDataRDD
 import org.carbondata.integration.spark.util.{CarbonQueryUtil, CarbonScalaUtil}
-import org.carbondata.query.expression.{ColumnExpression => CarbonColumnExpression, Expression => CarbonExpression, LiteralExpression => CarbonLiteralExpression}
-import org.carbondata.query.expression.ColumnExpression
+import org.carbondata.query.expression.{ColumnExpression => CarbonColumnExpression}
+import org.carbondata.query.expression.{Expression => CarbonExpression}
+import org.carbondata.query.expression.{LiteralExpression => CarbonLiteralExpression}
 import org.carbondata.query.expression.arithmetic.{AddExpression, DivideExpression, MultiplyExpression, SubstractExpression}
-import org.carbondata.query.expression.conditional.{EqualToExpression, NotEqualsExpression, _}
+import org.carbondata.query.expression.conditional._
 import org.carbondata.query.expression.logical.{AndExpression, OrExpression}
 import org.carbondata.query.scanner.impl.{CarbonKey, CarbonValue}
 
@@ -363,8 +365,8 @@ case class CarbonCubeScan(
       val exps = preProcessExpressions(dimensionPredicates)
       val expressionVal = transformExpression(exps.head)
       // adding dimension used in expression in querystats
-      expressionVal.getChildren.asScala.filter { x => x.isInstanceOf[ColumnExpression] }
-        .map { y => allDims += y.asInstanceOf[ColumnExpression].getColumnName }
+      expressionVal.getChildren.asScala.filter { x => x.isInstanceOf[CarbonColumnExpression] }
+        .map { y => allDims += y.asInstanceOf[CarbonColumnExpression].getColumnName }
       plan.setFilterExpression(expressionVal)
     }
     plan
@@ -455,7 +457,7 @@ case class CarbonCubeScan(
   }
 
   def inputRdd: CarbonDataRDD[CarbonKey, CarbonValue] = {
-    //Update the FilterExpressions with extra conditions added through join pushdown
+    // Update the FilterExpressions with extra conditions added through join pushdown
     if (!extraPreds.isEmpty) {
       val exps = preProcessExpressions(extraPreds.toSeq)
       val expressionVal = transformExpression(exps.head)
@@ -469,9 +471,10 @@ case class CarbonCubeScan(
 
     val conf = new Configuration();
     val absoluteTableIdentifier = new AbsoluteTableIdentifier(carbonCatalog.storePath,
-      new CarbonTableIdentifier(carbonTable.getDatabaseName,carbonTable.getFactTableName))
+      new CarbonTableIdentifier(carbonTable.getDatabaseName, carbonTable.getFactTableName))
 
-    val model = CarbonQueryUtil.createModel(absoluteTableIdentifier, buildCarbonPlan, carbonTable)
+    val model = CarbonQueryUtil.createQueryModel(
+      absoluteTableIdentifier, buildCarbonPlan, carbonTable)
     val splits = CarbonQueryUtil.getTableSplits(relation.schemaName, cubeName, buildCarbonPlan,
       relation.cubeMeta.partitioner)
     val kv: KeyVal[CarbonKey, CarbonValue] = new KeyValImpl()
@@ -479,11 +482,14 @@ case class CarbonCubeScan(
     buildCarbonPlan.setQueryId(oc.getConf("queryId", System.nanoTime() + ""))
     // CarbonQueryUtil.updateCarbonExecuterModelWithLoadMetadata(model)
     // CarbonQueryUtil.setPartitionColumn(model, relation.cubeMeta.partitioner.partitionColumn)
+    // scalastyle:off println
     println("Selected Table to Query ****** "
       + model.getAbsoluteTableIdentifier.getCarbonTableIdentifier.getTableName())
+    // scalastyle:on println
 
     val cubeCreationTime = carbonCatalog.getCubeCreationTime(relation.schemaName, cubeName)
-    val schemaLastUpdatedTime = carbonCatalog.getSchemaLastUpdatedTime(relation.schemaName, cubeName)
+    val schemaLastUpdatedTime =
+      carbonCatalog.getSchemaLastUpdatedTime(relation.schemaName, cubeName)
     val big = new CarbonDataRDD(
         oc.sparkContext,
         model,

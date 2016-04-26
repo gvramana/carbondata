@@ -25,10 +25,10 @@ import java.io.Serializable;
  */
 public class AbsoluteTableIdentifier implements Serializable {
 
-    public AbsoluteTableIdentifier(String storePath, CarbonTableIdentifier carbonTableIdentifier) {
-        this.storePath = storePath;
-        this.carbonTableIdentifier = carbonTableIdentifier;
-    }
+  public AbsoluteTableIdentifier(String storePath, CarbonTableIdentifier carbonTableIdentifier) {
+    this.storePath = storePath;
+    this.carbonTableIdentifier = carbonTableIdentifier;
+  }
 
   /**
    * serializable version

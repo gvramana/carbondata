@@ -16,10 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-/**
- *
- */
 package org.carbondata.integration.spark.load;
 
 import java.io.BufferedReader;
@@ -71,7 +67,6 @@ import org.carbondata.core.datastorage.store.impl.FileFactory.FileType;
 import org.carbondata.core.load.LoadMetadataDetails;
 import org.carbondata.core.metadata.CarbonMetadata;
 import org.carbondata.core.metadata.CarbonMetadata.Cube;
-import org.carbondata.core.metadata.CarbonMetadata.Dimension;
 import org.carbondata.core.util.CarbonCoreLogEvent;
 import org.carbondata.core.util.CarbonProperties;
 import org.carbondata.core.util.CarbonUtil;
@@ -90,7 +85,6 @@ import org.carbondata.processing.util.CarbonDataProcessorUtil;
 import org.carbondata.processing.util.CarbonSchemaParser;
 import org.carbondata.query.datastorage.InMemoryTable;
 import org.carbondata.query.datastorage.InMemoryTableStore;
-import org.carbondata.query.directinterface.impl.CarbonQueryParseUtil;
 
 import com.google.gson.Gson;
 import org.apache.hadoop.fs.FileSystem;
