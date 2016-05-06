@@ -808,7 +808,7 @@ class CarbonSqlDDLParser()
 
   protected lazy val loadOptions: Parser[(String, String)] =
     (stringLit <~ "=") ~ stringLit ^^ {
-      case opt ~ optvalue => (opt.toLowerCase(), optvalue)
+      case opt ~ optvalue => (opt.toLowerCase(), optvalue.toLowerCase())
       case _ => ("", "")
     }
 

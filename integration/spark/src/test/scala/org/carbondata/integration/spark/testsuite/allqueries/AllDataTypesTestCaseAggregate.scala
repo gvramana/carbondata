@@ -31,7 +31,7 @@ import org.scalatest.BeforeAndAfterAll
   * Test Class for all query on multiple datatypes
   *
   */
-class AllDataTypesTestCaseAggregate extends QueryTest with BeforeAndAfterAll {
+  class AllDataTypesTestCaseAggregate extends QueryTest with BeforeAndAfterAll {
 
   override def beforeAll {
 
@@ -44,10 +44,10 @@ class AllDataTypesTestCaseAggregate extends QueryTest with BeforeAndAfterAll {
   }
 
   override def afterAll {
-    sql("drop cube Carbon_automation_test")
+    // sql("drop cube Carbon_automation_test")
 
   }
-
+/*
   //Test-22
   test("select channelsId, sum(Latest_DAY+ 10) as a from Carbon_automation_test group by  channelsId") {
     checkAnswer(
@@ -469,13 +469,14 @@ class AllDataTypesTestCaseAggregate extends QueryTest with BeforeAndAfterAll {
     checkAnswer(
       sql("select percentile(deviceInformationId,0.2) as  a  from Carbon_automation_test"),
       Seq(Row(100006.6)))
-  })
+  }) */
     //TC_134
   test("select last(imei) a from Carbon_automation_test")({
     checkAnswer(
       sql("select last(imei) a from Carbon_automation_test"),
       Seq(Row("1AA100084")))
   })
+  /*
     //TC_136
   test("select series,count(imei) a from Carbon_automation_test group by series order by series")({
     checkAnswer(
@@ -1064,6 +1065,6 @@ class AllDataTypesTestCaseAggregate extends QueryTest with BeforeAndAfterAll {
     checkAnswer(
       sql("select stddev_samp(deviceInformationId)from Carbon_automation_test"),
       Seq(Row(96981.54360516652)))
-  })
+  })*/
 
 }

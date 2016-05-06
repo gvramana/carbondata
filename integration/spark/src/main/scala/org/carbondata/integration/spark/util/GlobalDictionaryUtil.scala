@@ -31,7 +31,7 @@ import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.{DataFrame, SQLContext}
 
-import org.carbondata.core.cache.dictionary.Dictionary
+import org.carbondata.core.cache.dictionary.{Dictionary, DictionaryByteArrayWrapper}
 import org.carbondata.core.carbon.CarbonTableIdentifier
 import org.carbondata.core.carbon.metadata.datatype.DataType
 import org.carbondata.core.carbon.metadata.encoder.Encoding
@@ -41,7 +41,6 @@ import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.datastorage.store.filesystem.CarbonFile
 import org.carbondata.core.datastorage.store.impl.FileFactory
 import org.carbondata.core.reader.{CarbonDictionaryReader, CarbonDictionaryReaderImpl}
-import org.carbondata.core.util.ByteUtil.UnsafeComparer
 import org.carbondata.core.util.CarbonUtil
 import org.carbondata.core.writer.{CarbonDictionaryWriter, CarbonDictionaryWriterImpl}
 import org.carbondata.core.writer.sortindex.{CarbonDictionarySortIndexWriter, CarbonDictionarySortIndexWriterImpl}
@@ -59,6 +58,7 @@ object GlobalDictionaryUtil extends Logging {
 
   /**
    * find columns which need to generate global dictionary.
+   *
    * @param dimensions dimension list of schema
    * @param columns column list of csv file
    * @return: java.lang.String[]
@@ -222,10 +222,9 @@ object GlobalDictionaryUtil extends Logging {
   }
 
   def generateParserForChildrenDimension(dim: CarbonDimension,
-                                         format: DataFormat,
-                                         mapColumnValuesWithId:
-                                           HashMap[String, HashSet[Array[Byte]]],
-                                         generic: GenericParser): Unit = {
+  format: DataFormat,
+  mapColumnValuesWithId: HashMap[String, HashSet[String]],
+  generic: GenericParser): Unit = {
     val children = dim.getListOfChildDimensions.asScala
     for (i <- 0 until children.length) {
       generateParserForDimension(Some(children(i)), format.cloneAndIncreaseIndex,
@@ -238,8 +237,8 @@ object GlobalDictionaryUtil extends Logging {
   }
 
   def generateParserForDimension(dimension: Option[CarbonDimension],
-                                 format: DataFormat,
-                                 mapColumnValuesWithId: HashMap[String, HashSet[Array[Byte]]]
+  format: DataFormat,
+  mapColumnValuesWithId: HashMap[String, HashSet[String]]
   ): Option[GenericParser] = {
     dimension match {
       case None =>
@@ -422,7 +421,7 @@ object GlobalDictionaryUtil extends Logging {
           hdfsLocation, dictfolderPath)
         // combine distinct value in a block and partition by column
         val inputRDD = new CarbonBlockDistinctValuesCombineRDD(df.rdd, model)
-          .partitionBy(new ColumnPartitioner(model.primDimensions.length))
+          .reduceByKey(new ColumnPartitioner(model.primDimensions.length), (x, y) => x)
         // generate global dictionary files
         val statusList = new CarbonGlobalDictionaryGenerateRDD(inputRDD, model).collect()
         // check result status
@@ -462,11 +461,9 @@ object GlobalDictionaryUtil extends Logging {
     }
   }
 
-  def generateAndWriteNewDistinctValueList(valuesBuffer: ArrayBuffer[Array[Byte]],
+  def generateAndWriteNewDistinctValueList(values: Iterator[(DictionaryShuffleKey, Int)],
     dictionary: Dictionary,
     model: DictionaryLoadModel, columnIndex: Int): Int = {
-    val values = valuesBuffer.toArray
-    java.util.Arrays.sort(values, new ByteArrayComparator)
     var distinctValueCount: Int = 0
     val writer: CarbonDictionaryWriter = new CarbonDictionaryWriterImpl(
       model.hdfsLocation, model.table,
@@ -477,32 +474,34 @@ object GlobalDictionaryUtil extends Logging {
         distinctValueCount += 1
       }
 
-      if (values.length >= 1) {
-        var preValue = values(0)
+      if (values.hasNext) {
+        var preValue = values.next()._1.data
         if (model.dictFileExists(columnIndex)) {
-          if (dictionary.getSurrogateKey(values(0)) == CarbonCommonConstants
+          if (dictionary.getSurrogateKey(preValue) == CarbonCommonConstants
             .INVALID_SURROGATE_KEY) {
-            writer.write(values(0))
+            writer.write(preValue)
             distinctValueCount += 1
           }
-          for (i <- 1 until values.length) {
-            if (UnsafeComparer.INSTANCE.compareTo(values(i), preValue) != 0) {
-              if (dictionary.getSurrogateKey(values(i)) ==
+          while (values.hasNext) {
+            val currValue = values.next()._1.data
+            if (currValue != preValue) {
+              if (dictionary.getSurrogateKey(currValue) ==
                 CarbonCommonConstants.INVALID_SURROGATE_KEY) {
-                writer.write(values(i))
-                preValue = values(i)
+                writer.write(currValue)
+                preValue = currValue
                 distinctValueCount += 1
               }
             }
           }
 
         } else {
-          writer.write(values(0))
+          writer.write(preValue)
           distinctValueCount += 1
-          for (i <- 1 until values.length) {
-            if (UnsafeComparer.INSTANCE.compareTo(values(i), preValue) != 0) {
-              writer.write(values(i))
-              preValue = values(i)
+          while (values.hasNext) {
+            val currValue = values.next()._1.data
+            if (currValue != preValue) {
+              writer.write(currValue)
+              preValue = currValue
               distinctValueCount += 1
             }
           }

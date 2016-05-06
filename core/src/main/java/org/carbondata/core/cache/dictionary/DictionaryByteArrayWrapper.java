@@ -29,7 +29,7 @@ import net.jpountz.xxhash.XXHash32;
  * class that holds the byte array and overrides equals and hashcode method which
  * will be useful for object comparison
  */
-public class DictionaryByteArrayWrapper {
+public class DictionaryByteArrayWrapper implements Comparable<DictionaryByteArrayWrapper> {
 
   /**
    * dictionary value as byte array
@@ -58,6 +58,13 @@ public class DictionaryByteArrayWrapper {
   }
 
   /**
+   * @return returns byte data
+   */
+  public byte[] getBytes() {
+    return data;
+  }
+
+  /**
    * This method will compare 2 DictionaryByteArrayWrapper objects
    *
    * @param other
@@ -76,6 +83,11 @@ public class DictionaryByteArrayWrapper {
     }
     return ByteUtil.UnsafeComparer.INSTANCE.equals(data, otherObjectToCompare.data);
 
+  }
+
+  @Override
+  public int compareTo(DictionaryByteArrayWrapper otherObjectToCompare) {
+    return ByteUtil.UnsafeComparer.INSTANCE.compareTo(data, otherObjectToCompare.data);
   }
 
   /**

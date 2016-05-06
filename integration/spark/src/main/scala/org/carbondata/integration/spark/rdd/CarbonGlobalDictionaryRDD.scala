@@ -18,6 +18,7 @@
 package org.carbondata.integration.spark.rdd
 
 import java.nio.charset.Charset
+import java.util
 import java.util.regex.Pattern
 import java.util.Comparator
 
@@ -29,10 +30,11 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 
 import org.carbondata.common.logging.LogServiceFactory
+import org.carbondata.core.cache.dictionary.DictionaryByteArrayWrapper
 import org.carbondata.core.carbon.CarbonTableIdentifier
 import org.carbondata.core.carbon.metadata.schema.table.column.CarbonDimension
 import org.carbondata.core.constants.CarbonCommonConstants
-import org.carbondata.core.util.ByteUtil.UnsafeComparer
+import org.carbondata.core.util.ByteUtil
 import org.carbondata.integration.spark.load.CarbonLoaderUtil
 import org.carbondata.integration.spark.util.{CarbonSparkInterFaceLogEvent, GlobalDictionaryUtil}
 
@@ -45,7 +47,7 @@ import org.carbondata.integration.spark.util.{CarbonSparkInterFaceLogEvent, Glob
 class ColumnPartitioner(numParts: Int) extends Partitioner {
   override def numPartitions: Int = numParts
 
-  override def getPartition(key: Any): Int = key.asInstanceOf[Int]
+  override def getPartition(key: Any): Int = key.asInstanceOf[DictionaryShuffleKey].columnId
 }
 
 trait GenericParser {
@@ -55,11 +57,10 @@ trait GenericParser {
 }
 
 case class PrimitiveParser(dimension: CarbonDimension,
-                           setOpt: Option[HashSet[Array[Byte]]]) extends GenericParser {
+  setOpt: Option[HashSet[String]]) extends GenericParser {
   val charset = Charset.forName(CarbonCommonConstants.DEFAULT_CHARSET)
-
-  val (hasDictEncoding, set: HashSet[Array[Byte]]) = setOpt match {
-    case None => (false, new HashSet[Array[Byte]])
+  val (hasDictEncoding, set: HashSet[String]) = setOpt match {
+    case None => (false, new HashSet[String])
     case Some(x) => (true, x)
   }
 
@@ -68,7 +69,7 @@ case class PrimitiveParser(dimension: CarbonDimension,
 
   def parseString(input: String): Unit = {
     if (hasDictEncoding) {
-      set.add(input.getBytes(charset))
+      set.add(input)
     }
   }
 }
@@ -123,10 +124,10 @@ case class DataFormat(delimiters: Array[String],
   }
 }
 
-class ByteArrayComparator extends Comparator[Array[Byte]]{
+class ByteArrayComparator extends Comparator[DictionaryByteArrayWrapper]{
 
-  def compare(o1: Array[Byte], o2: Array[Byte]): Int = {
-    UnsafeComparer.INSTANCE.compareTo(o1, o2)
+  def compare(o1: DictionaryByteArrayWrapper, o2: DictionaryByteArrayWrapper): Int = {
+    o1.compareTo(o2)
   }
 
   override def equals(obj: Any): Boolean = {
@@ -135,6 +136,52 @@ class ByteArrayComparator extends Comparator[Array[Byte]]{
 
 }
 
+case class DictionaryShuffleKey( columnId: Int, data: String)
+/*    extends Comparable[DictionaryShuffleKey]  {
+
+//  override def equals(obj: java.lang.Object): Boolean = {
+//    equals(obj.asInstanceOf[scala.Any])
+//  }
+//
+//  override def equals(obj: scala.Any): Boolean = {
+//    if (this == obj) {
+//      true
+//    } else if (!obj.isInstanceOf[DictionaryShuffleKey]) {
+//      false
+//    } else {
+//      val objKey = obj.asInstanceOf[DictionaryShuffleKey]
+//      if (this.columnId == objKey.columnId
+//          && ByteUtil.UnsafeComparer.INSTANCE.equals(data, objKey.data)) {
+//        return true
+//      } else {
+//        false
+//      }
+//    }
+//  }
+
+
+//  override def hashCode(): Int = {
+//    val state = Seq(columnId, data)
+//    state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
+//  }
+  def canEqual(other: Any): Boolean = other.isInstanceOf[DictionaryShuffleKey]
+
+  override def equals(other: Any): Boolean = other match {
+    case that: DictionaryShuffleKey =>
+      (that canEqual this) &&
+       columnId == that.columnId &&
+       ByteUtil.UnsafeComparer.INSTANCE.equals(data, that.data)
+    case _ => false
+  }
+
+  override def hashCode(): Int = {
+    columnId + (31 * util.Arrays.hashCode(data))
+  }
+
+  override def compareTo(o: DictionaryShuffleKey): Int =
+    ByteUtil.UnsafeComparer.INSTANCE.compareTo(data, o.data)
+}
+*/
 /**
  * a case class to package some attributes
  */
@@ -157,23 +204,23 @@ case class DictionaryLoadModel(table: CarbonTableIdentifier,
 class CarbonBlockDistinctValuesCombineRDD(
   prev: RDD[Row],
   model: DictionaryLoadModel)
-    extends RDD[(Int, Array[Array[Byte]])](prev) with Logging {
+    extends RDD[(DictionaryShuffleKey, Int)](prev) with Logging {
 
   override def getPartitions: Array[Partition] = firstParent[Row].partitions
 
-  override def compute(split: Partition, context: TaskContext
-      ): Iterator[(Int, Array[Array[Byte]])] = {
+  override def compute(split: Partition, context: TaskContext):
+  Iterator[(DictionaryShuffleKey, Int)] = {
     val LOGGER = LogServiceFactory.getLogService(this.getClass().getName());
 
-    val distinctValuesList = new ArrayBuffer[(Int, HashSet[Array[Byte]])]
+    val distinctValuesList = new ArrayBuffer[(Int, HashSet[String])]
     try {
       // local combine set
       val dimNum = model.dimensions.length
       val primDimNum = model.primDimensions.length
-      val columnValues = new Array[HashSet[Array[Byte]]](primDimNum)
-      val mapColumnValuesWithId = new HashMap[String, HashSet[Array[Byte]]]
+      val columnValues = new Array[HashSet[String]](primDimNum)
+      val mapColumnValuesWithId = new HashMap[String, HashSet[String]]
       for (i <- 0 until primDimNum) {
-        columnValues(i) = new HashSet[Array[Byte]]
+        columnValues(i) = new HashSet[String]
         distinctValuesList += ((i, columnValues(i)))
         mapColumnValuesWithId.put(model.primDimensions(i).getColumnId, columnValues(i))
       }
@@ -185,7 +232,6 @@ class CarbonBlockDistinctValuesCombineRDD(
           mapColumnValuesWithId).get
       }
       var row: Row = null
-      var value: String = null
       val rddIter = firstParent[Row].iterator(split, context)
       // generate block distinct value set
       while (rddIter.hasNext) {
@@ -200,11 +246,17 @@ class CarbonBlockDistinctValuesCombineRDD(
       case ex: Exception =>
         LOGGER.error(CarbonSparkInterFaceLogEvent.UNIBI_CARBON_SPARK_INTERFACE_MSG, ex)
     }
+    val totalSize = distinctValuesList.foldLeft[Int](0)(
+      (size, oneColumnValues) => size + oneColumnValues._2.size)
+    val distinctIndividualValueList = new ArrayBuffer[(DictionaryShuffleKey, Int)](totalSize)
     distinctValuesList.map { iter =>
       val valueList = iter._2.toArray
-      java.util.Arrays.sort(valueList, new ByteArrayComparator)
-      (iter._1, valueList)
-    }.iterator
+      // java.util.Arrays.sort(valueList, new ByteArrayComparator)
+      valueList.foreach { x =>
+        distinctIndividualValueList.+= ((new DictionaryShuffleKey(iter._1, x), 0))
+      }
+    }
+    distinctIndividualValueList.iterator
   }
 }
 
@@ -216,11 +268,12 @@ class CarbonBlockDistinctValuesCombineRDD(
  * @param model a model package load info
  */
 class CarbonGlobalDictionaryGenerateRDD(
-  prev: RDD[(Int, Array[Array[Byte]])],
+  prev: RDD[(DictionaryShuffleKey, Int)],
   model: DictionaryLoadModel)
     extends RDD[(String, String)](prev) with Logging {
 
-  override def getPartitions: Array[Partition] = firstParent[(Int, Array[Array[Byte]])].partitions
+  override def getPartitions: Array[Partition] =
+    firstParent[(DictionaryShuffleKey, Int)].partitions
 
   override def compute(split: Partition, context: TaskContext): Iterator[(String, String)] = {
     val LOGGER = LogServiceFactory.getLogService(this.getClass().getName());
@@ -239,19 +292,12 @@ class CarbonGlobalDictionaryGenerateRDD(
           null
         }
         val t2 = System.currentTimeMillis
-        val valuesBuffer = new ArrayBuffer[Array[Byte]]
-        val rddIter = firstParent[(Int, Array[Array[Byte]])].iterator(split, context)
-        while (rddIter.hasNext) {
-          valuesBuffer ++= rddIter.next()._2
-        }
-        val t3 = System.currentTimeMillis
+        val rddIter = firstParent[(DictionaryShuffleKey, Int)].iterator(split, context)
         val distinctValueCount = GlobalDictionaryUtil.generateAndWriteNewDistinctValueList(
-          valuesBuffer, dictionary, model, split.index
+          rddIter, dictionary, model, split.index
         )
-        // clear the value buffer after writing dictionary data
-        valuesBuffer.clear
 
-        val t4 = System.currentTimeMillis
+        val t3 = System.currentTimeMillis
 
         if (distinctValueCount > 0) {
           val columnDictionary = CarbonLoaderUtil.getDictionary(model.table,
@@ -261,16 +307,15 @@ class CarbonGlobalDictionaryGenerateRDD(
           GlobalDictionaryUtil.writeGlobalDictionaryColumnSortInfo(model, split.index,
             columnDictionary
           )
-          val t5 = System.currentTimeMillis
+          val t4 = System.currentTimeMillis
 
           LOGGER.info(CarbonSparkInterFaceLogEvent.UNIBI_CARBON_SPARK_INTERFACE_MSG,
-            "\n columnName:" + model.primDimensions(split.index).getColName +
-              "\n columnId:" + model.primDimensions(split.index).getColumnId +
-              "\n new distinct values count:" + distinctValueCount +
-              "\n create dictionary cache:" + (t2 - t1) +
-              "\n combine lists:" + (t3 - t2) +
-              "\n sort list, distinct and write:" + (t4 - t3) +
-              "\n write sort info:" + (t5 - t4)
+            "\n columnName : " + model.primDimensions(split.index).getColName +
+              "\n columnId : " + model.primDimensions(split.index).getColumnId +
+              "\n new distinct values count : " + distinctValueCount +
+              "\n create dictionary cache : " + (t2 - t1) +
+              "\n write dictionary : " + (t3 - t2) +
+              "\n write sort info : " + (t4 - t3)
           )
         }
       } catch {
