@@ -77,7 +77,6 @@ import org.carbondata.core.util.CarbonProperties;
 import org.carbondata.core.util.CarbonUtil;
 import org.carbondata.core.util.CarbonUtilException;
 import org.carbondata.integration.spark.merger.NodeBlockRelation;
-import org.carbondata.integration.spark.util.CarbonSparkInterFaceLogEvent;
 import org.carbondata.processing.api.dataloader.DataLoadModel;
 import org.carbondata.processing.api.dataloader.SchemaInfo;
 import org.carbondata.processing.csvload.DataGraphExecuter;
